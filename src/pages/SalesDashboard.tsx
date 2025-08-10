@@ -47,7 +47,13 @@ export default function SalesDashboard(){
         <div className="toolbar">
           <input className="input" style={{maxWidth:220}} placeholder="Board ID" value={boardId} onChange={(e)=>setBoardId(e.target.value)} />
           <PillFilters value={period} onChange={setPeriod} options={[{label:"This Q",value:"this_q"},{label:"YTD",value:"ytd"}]} />
-          <button className="btn" onClick={load} disabled={disabled}>{loading? "Loading…" : "Refresh"}</button>
+          <button
+            className="btn"
+            onClick={() => { if (!loading) load(); }}
+            disabled={loading || !boardId}
+          >
+            Refresh
+          </button>
         </div>
       </div>
 
