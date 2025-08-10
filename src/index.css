@@ -1,7 +1,7 @@
+@import url("https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
@@ -36,33 +36,40 @@ All colors MUST be HSL.
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
 
-    --radius: 0.5rem;
+    --radius: 0.65rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Brand & effects */
+    --brand: 258 85% 60%; /* Violet accent */
+    --brand-strong: 258 85% 50%;
+    --brand-foreground: 0 0% 100%;
+    --hero-foreground: 0 0% 100%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(var(--brand)) 0%, hsl(var(--brand-strong)) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--muted))/0.4 100%);
+
+    --shadow-elegant: 0 10px 30px -10px hsl(var(--brand) / 0.35);
+    --shadow-glow: 0 0 36px hsl(var(--brand) / 0.35);
+
+    --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 84% 6.2%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222.2 84% 6.2%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 210 40% 98%;
@@ -82,7 +89,8 @@ All colors MUST be HSL.
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 217.2 91.2% 59.8%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -91,6 +99,17 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --brand: 258 85% 65%;
+    --brand-strong: 258 85% 55%;
+    --brand-foreground: 0 0% 100%;
+    --hero-foreground: 0 0% 100%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(var(--brand)) 0%, hsl(var(--brand-strong)) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--muted))/0.2 100%);
+
+    --shadow-elegant: 0 10px 30px -10px hsl(var(--brand) / 0.35);
+    --shadow-glow: 0 0 36px hsl(var(--brand) / 0.4);
   }
 }
 
@@ -101,5 +120,29 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: "Rubik", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
   }
+
+  /* Signature ambient glow behind header/hero (respects reduced motion) */
+  .ambient-glow {
+    position: relative;
+  }
+  .ambient-glow::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: -40px;
+    height: 160px;
+    background: var(--gradient-primary);
+    filter: blur(40px);
+    opacity: 0.25;
+    pointer-events: none;
+    border-radius: 9999px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ambient-glow::before { filter: blur(24px); }
+  }
+
+  /* RTL helpers */
+  [dir="rtl"] .rtl\:text-start { text-align: start; }
 }
