@@ -1,7 +1,7 @@
+// deno-lint-ignore-file no-explicit-any
 // Google Drive/Sheets → CSV exporter (folder scan)
-// Requires: GOOGLE_API_KEY (Server Secret). Folder must be shared "Anyone with the link – Viewer" for API key access.
-
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Public function (no JWT) — requires GOOGLE_API_KEY server secret.
+// Folders must be shared "Anyone with the link – Viewer".
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,21 +70,6 @@ async function downloadCsvFile(fileId: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Require Authorization and forward it to supabase-js client
-  const auth = req.headers.get("Authorization");
-  if (!auth?.startsWith("Bearer ")) {
-    return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: auth } } }
-  );
-
   try {
     const apiKey = Deno.env.get("GOOGLE_API_KEY");
     if (!apiKey) {
@@ -103,16 +88,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Ensure user is authenticated
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 401,
-      });
-    }
-
+    console.log("drive-import: start", { folderId });
     const files = await listFolderFiles(apiKey, folderId);
+    console.log("drive-import: files found", files.length);
 
     const out: any[] = [];
     for (const f of files) {
@@ -131,6 +109,7 @@ Deno.serve(async (req) => {
                 csv,
               });
             } catch (e) {
+              console.error("drive-import: sheet export error", f.id, s.sheetId, e);
               out.push({ id: f.id, name: `${f.name} — ${s.title}`, mimeType: f.mimeType, error: String(e) });
             }
           }
@@ -144,18 +123,22 @@ Deno.serve(async (req) => {
             csv,
           });
         } else {
-          continue; // skip non-CSV/Sheets
+          // Skip non-CSV/Sheets files
+          continue;
         }
       } catch (e) {
+        console.error("drive-import: file error", f.id, e);
         out.push({ id: f.id, name: f.name, mimeType: f.mimeType, error: String(e) });
       }
     }
 
+    console.log("drive-import: done", { count: out.length });
     return new Response(JSON.stringify({ ok: true, count: out.length, files: out }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (e) {
+    console.error("drive-import: fatal", e);
     return new Response(JSON.stringify({ ok: false, error: (e as Error).message || "unknown error" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
