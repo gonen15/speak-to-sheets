@@ -1,52 +1,55 @@
-// deno-lint-ignore-file no-explicit-any
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+// Google Drive/Sheets → CSV exporter (folder scan)
+// Requires: GOOGLE_API_KEY (Server Secret). Folder must be shared "Anyone with the link – Viewer" for API key access.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function parseFolderId(input: string): string | null {
-  try {
-    if (!input) return null;
-    if (!input.includes("/")) return input; // assume it's already an ID
-    const url = new URL(input);
-    // /drive/folders/{id}
-    const parts = url.pathname.split("/").filter(Boolean);
-    const idx = parts.indexOf("folders");
-    if (idx !== -1 && parts[idx + 1]) return parts[idx + 1];
-    // open?id={id}
-    const id = url.searchParams.get("id");
-    if (id) return id;
-    return null;
-  } catch {
-    return input; // best effort
-  }
+// ---------- Helpers ----------
+function parseFolderId(input?: string | null): string | null {
+  if (!input) return null;
+  const s = input.trim();
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(s)) return s; // looks like a raw ID
+  const m = s.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  return m?.[1] ?? null;
 }
 
 async function listFolderFiles(apiKey: string, folderId: string) {
-  const listUrl = new URL("https://www.googleapis.com/drive/v3/files");
-  listUrl.searchParams.set("q", `'${folderId}' in parents and trashed=false`);
-  listUrl.searchParams.set("fields", "files(id,name,mimeType,modifiedTime)");
-  listUrl.searchParams.set("pageSize", "1000");
-  listUrl.searchParams.set("supportsAllDrives", "true");
-  listUrl.searchParams.set("includeItemsFromAllDrives", "true");
-  listUrl.searchParams.set("key", apiKey);
-  const res = await fetch(listUrl);
-  if (!res.ok) throw new Error(`Drive list failed: ${res.status}`);
-  const json = await res.json();
-  return (json.files || []) as Array<{ id: string; name: string; mimeType: string; modifiedTime?: string }>;
+  const base = "https://www.googleapis.com/drive/v3/files";
+  const q = `'${folderId}' in parents and trashed = false`;
+  const fields = "nextPageToken,files(id,name,mimeType)";
+  let pageToken: string | undefined;
+  const out: Array<{ id: string; name: string; mimeType: string }> = [];
+
+  do {
+    const url = new URL(base);
+    url.searchParams.set("q", q);
+    url.searchParams.set("fields", fields);
+    url.searchParams.set("key", apiKey);
+    url.searchParams.set("pageSize", "1000");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+    const res = await fetch(url.toString());
+    if (!res.ok) throw new Error(`Drive list failed: ${res.status}`);
+    const json = await res.json();
+    (json.files || []).forEach((f: any) => out.push({ id: f.id, name: f.name, mimeType: f.mimeType }));
+    pageToken = json.nextPageToken || undefined;
+  } while (pageToken);
+
+  return out;
 }
 
 async function getSpreadsheetSheets(apiKey: string, spreadsheetId: string) {
   const metaUrl = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`);
   metaUrl.searchParams.set("fields", "sheets.properties(sheetId,title)");
   metaUrl.searchParams.set("key", apiKey);
-  const res = await fetch(metaUrl);
+  const res = await fetch(metaUrl.toString());
   if (!res.ok) throw new Error(`Sheets meta failed: ${res.status}`);
   const json = await res.json();
-  const sheets = (json.sheets || []).map((s: any) => s.properties) as Array<{ sheetId: number; title: string }>;
-  return sheets;
+  return (json.sheets || []).map((s: any) => s.properties) as Array<{ sheetId: number; title: string }>;
 }
 
 async function exportSheetCsv(spreadsheetId: string, gid: number) {
@@ -57,24 +60,36 @@ async function exportSheetCsv(spreadsheetId: string, gid: number) {
 }
 
 async function downloadCsvFile(fileId: string) {
-  // Public file download shortcut
   const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`CSV download failed: ${res.status}`);
-  const text = await res.text();
-  return text;
+  return await res.text();
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+// ---------- Handler ----------
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Require Authorization and forward it to supabase-js client
+  const auth = req.headers.get("Authorization");
+  if (!auth?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: auth } } }
+  );
 
   try {
     const apiKey = Deno.env.get("GOOGLE_API_KEY");
     if (!apiKey) {
       return new Response(JSON.stringify({ ok: false, error: "Missing GOOGLE_API_KEY" }), {
-        headers: { "Content-Type": "application/json", ...corsHeaders },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
       });
     }
@@ -83,8 +98,17 @@ serve(async (req) => {
     const folderId = parseFolderId(rawId || folderUrl);
     if (!folderId) {
       return new Response(JSON.stringify({ ok: false, error: "folderId or folderUrl is required" }), {
-        headers: { "Content-Type": "application/json", ...corsHeaders },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
+      });
+    }
+
+    // Ensure user is authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
       });
     }
 
@@ -120,8 +144,7 @@ serve(async (req) => {
             csv,
           });
         } else {
-          // Skip non-CSV/Sheets files
-          continue;
+          continue; // skip non-CSV/Sheets
         }
       } catch (e) {
         out.push({ id: f.id, name: f.name, mimeType: f.mimeType, error: String(e) });
@@ -129,12 +152,12 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ ok: true, count: out.length, files: out }), {
-      headers: { "Content-Type": "application/json", ...corsHeaders },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: (e as Error).message || "unknown error" }), {
-      headers: { "Content-Type": "application/json", ...corsHeaders },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
   }

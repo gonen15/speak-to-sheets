@@ -8,7 +8,7 @@ import PageMeta from "@/components/common/PageMeta";
 import { useI18n } from "@/i18n/i18n";
 import { useDataStore } from "@/store/dataStore";
 import { driveImport } from "@/lib/supabaseEdge";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const Datasets = () => {
   const { t } = useI18n();

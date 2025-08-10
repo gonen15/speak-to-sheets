@@ -68,7 +68,11 @@ export function queryAggregate(payload: {
 }
 
 export function driveImport(payload: { folderUrl?: string; folderId?: string }) {
-  return callEdge<{ ok: boolean; count: number; files: any[] }>("drive-import", {
+  return callEdge<{
+    ok: boolean;
+    count: number;
+    files: { id: string; name: string; mimeType: string; sourceUrl?: string; csv?: string; error?: string }[];
+  }>("drive-import", {
     body: payload,
   });
 }
