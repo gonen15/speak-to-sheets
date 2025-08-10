@@ -9,6 +9,7 @@ import { useI18n } from "@/i18n/i18n";
 import { useDataStore } from "@/store/dataStore";
 import { driveImport } from "@/lib/supabaseEdge";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Datasets = () => {
   const { t } = useI18n();
@@ -16,7 +17,7 @@ const Datasets = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Import only from Google Drive
+  // Import from Google Drive and CRM (Monday)
 
   const onImportDrive = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -38,13 +39,34 @@ const Datasets = () => {
       toast({ title: "Import failed", description: String(err), variant: "destructive" as any });
     }
   };
+
+  const onSyncMonday = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement & { boardIds: { value: string } };
+    const raw = form.boardIds.value.trim();
+    const ids = raw
+      ? raw
+          .split(",")
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => !isNaN(n))
+      : undefined;
+    try {
+      const { data, error } = await supabase.functions.invoke<{ ok: boolean; boards: number; items: number }>("monday-sync", {
+        body: { boardIds: ids },
+      });
+      if (error || !data?.ok) throw new Error(error?.message || "Sync failed");
+      toast({ title: "Monday synced", description: `${data.boards} boards • ${data.items} items` });
+    } catch (err: any) {
+      toast({ title: "Sync failed", description: String(err), variant: "destructive" as any });
+    }
+  };
   return (
     <main className="container mx-auto py-10">
-      <PageMeta title="CGC DataHub — Datasets" description="Import from Google Drive folders only" path="/datasets" />
+      <PageMeta title="CGC DataHub — Datasets" description="Import from Google Drive and sync CRM systems" path="/datasets" />
       <h1 className="text-2xl font-semibold mb-6">{t("datasets")}</h1>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="md:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle>Google Drive Folder</CardTitle>
             <CardDescription>Paste a shared folder URL to import all Google Sheets and CSV files.</CardDescription>
@@ -56,6 +78,22 @@ const Datasets = () => {
                 <Input id="folderUrl" name="folderUrl" placeholder="https://drive.google.com/drive/folders/11uueYvA4ZMKzmnHWTS4YDGVJKuBYFSD8" />
               </div>
               <Button type="submit">Import from Drive</Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>CRM (Monday.com)</CardTitle>
+            <CardDescription>Sync boards into the analytics tables. Optionally specify board IDs.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-3" onSubmit={onSyncMonday}>
+              <div className="space-y-2">
+                <Label htmlFor="boardIds">Board IDs (optional)</Label>
+                <Input id="boardIds" name="boardIds" placeholder="12345, 67890" />
+              </div>
+              <Button type="submit">Sync Monday CRM</Button>
             </form>
           </CardContent>
         </Card>

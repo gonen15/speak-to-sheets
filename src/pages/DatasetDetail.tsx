@@ -18,7 +18,7 @@ const DatasetDetail = () => {
       <PageMeta title={`Dataset — ${ds.name}`} description="Preview imported data and sync." path={`/datasets/${ds.id}`} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">{ds.name}</h1>
-        <Button variant="outline" onClick={() => syncDataset(ds.id)} disabled={ds.status === "syncing"}>{t("syncNow")}</Button>
+        <Button variant="outline" onClick={() => syncDataset(ds.id)} disabled={ds.status === "syncing" || !ds.sourceUrl}>{t("syncNow")}</Button>
       </div>
 
       <Card>
