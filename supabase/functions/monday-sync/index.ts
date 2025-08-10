@@ -56,7 +56,7 @@ async function mondayGraphQL<T>(query: string, variables?: Record<string, unknow
 
 async function listBoards(boardIds?: number[]): Promise<Array<{ id: number; name: string; state?: string; workspace?: string }>> {
   const q = /* GraphQL */ `
-    query Boards($ids: [Int!]) {
+    query Boards($ids: [ID!]) {
       boards(ids: $ids) {
         id
         name
@@ -82,7 +82,7 @@ async function fetchAndUpsertItems(boardId: number): Promise<number> {
   let cursor: string | null | undefined = null;
   let count = 0;
   const q = /* GraphQL */ `
-    query Items($bid: [Int!], $cursor: String) {
+    query Items($bid: [ID!], $cursor: String) {
       boards(ids: $bid) {
         items_page(limit: 100, cursor: $cursor) {
           cursor
