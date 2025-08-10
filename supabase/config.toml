@@ -1,1 +1,4 @@
 project_id = "vdsryddwzhcnoksamkep"
+
+[functions.monday-sync]
+verify_jwt = true
