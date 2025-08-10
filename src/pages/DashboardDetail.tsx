@@ -43,10 +43,10 @@ const DashboardDetail = () => {
             </SelectContent>
           </Select>
 
-          <Select value={dimension || ""} onValueChange={(v) => setDimension(v || undefined)}>
+          <Select value={dimension ?? "__none"} onValueChange={(v) => setDimension(v === "__none" ? undefined : v)}>
             <SelectTrigger><SelectValue placeholder={t("dimensions")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Time (month)</SelectItem>
+              <SelectItem value="__none">Time (month)</SelectItem>
               {model.dimensions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
             </SelectContent>
           </Select>
