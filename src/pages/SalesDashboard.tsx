@@ -6,9 +6,6 @@ import PillFilters from "@/components/ui/PillFilters";
 import Section from "@/components/ui/Section";
 import ChartFrame from "@/components/charts/ChartFrame";
 import { BarChart, Bar, Legend } from "recharts";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
 
 function quarterRange(d = new Date()){
   const m=d.getMonth(); const s=[0,3,6,9][Math.floor(m/3)];
@@ -40,18 +37,18 @@ export default function SalesDashboard(){
   }
 
   return (
-    <main className="max-w-6xl mx-auto p-6 space-y-6">
+    <main className="container">
       <PageMeta title="Sales Dashboard — CGC DataHub" description="Minimal sales analytics with clean KPIs and charts." path="/dashboards/sales" />
       <header className="mb-2">
         <h1 className="text-xl font-semibold tracking-tight">Sales Dashboard</h1>
       </header>
 
-      <div className="card p-4 flex items-center gap-3">
-        <Input className="w-[200px]" placeholder="Board ID" value={boardId} onChange={(e)=>setBoardId(e.target.value)}/>
-        <PillFilters value={period} onChange={setPeriod} options={[{label:"This Q",value:"this_q"},{label:"YTD",value:"ytd"}]}/>
-        <Button onClick={load} disabled={disabled} variant="secondary">
-          {loading? <Loader2 className="h-4 w-4 mr-2 animate-spin"/>: null} Refresh
-        </Button>
+      <div className="card" style={{padding:16}}>
+        <div className="toolbar">
+          <input className="input" style={{maxWidth:220}} placeholder="Board ID" value={boardId} onChange={(e)=>setBoardId(e.target.value)} />
+          <PillFilters value={period} onChange={setPeriod} options={[{label:"This Q",value:"this_q"},{label:"YTD",value:"ytd"}]} />
+          <button className="btn" onClick={load} disabled={disabled}>{loading? "Loading…" : "Refresh"}</button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -61,12 +58,13 @@ export default function SalesDashboard(){
       </div>
 
       <Section title="Amount by Status">
-        <ChartFrame>
+        <ChartFrame data={series} render={(common)=> (
           <BarChart data={series}>
+            {common}
             <Legend />
             <Bar dataKey="value" name="Amount" radius={[6,6,0,0]} />
           </BarChart>
-        </ChartFrame>
+        )} />
       </Section>
     </main>
   );

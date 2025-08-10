@@ -5,32 +5,30 @@ export function MinimalTooltip({ active, payload, label }: any){
   if(!active || !payload?.length) return null;
   const p = payload[0];
   return (
-    <div className="card p-2 text-xs">
-      <div className="mb-1 text-slate-500">{label}</div>
-      <div><b>{p.name || p.dataKey}:</b> {new Intl.NumberFormat().format(Number(p.value||0))}</div>
+    <div className="card" style={{padding:8}}>
+      <div className="label" style={{marginBottom:4}}>{label}</div>
+      <div style={{fontSize:12}}><b>{p.name || p.dataKey}:</b> {new Intl.NumberFormat().format(Number(p.value||0))}</div>
     </div>
   );
 }
 
-export default function ChartFrame({children}:{children:React.ReactElement}){
-  const child = React.Children.only(children) as React.ReactElement;
-  const enhanced = React.cloneElement(child, {
-    children: (
-      <>
-        {child.props.children}
-        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-        <XAxis dataKey="name" tick={{ fontSize:12, fill:'#64748b' }} axisLine={false} tickLine={false}/>
-        <YAxis tick={{ fontSize:12, fill:'#64748b' }} axisLine={false} tickLine={false} width={48}/>
-        <Tooltip content={<MinimalTooltip/>}/>
-      </>
-    )
-  });
-
+/** render-prop שמזריק צירים/גריד/טולטיפ אל תוך ה-Bar/LineChart */
+export default function ChartFrame({data, render}:{data:any[]; render:(common:React.ReactNode)=>React.ReactElement}){
+  const common = (
+    <>
+      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+      <XAxis dataKey="name" tick={{ fontSize:12, fill:"#64748b" }} axisLine={false} tickLine={false}/>
+      <YAxis tick={{ fontSize:12, fill:"#64748b" }} axisLine={false} tickLine={false} width={48}/>
+      <Tooltip content={<MinimalTooltip/>}/>
+    </>
+  );
   return (
-    <div className="card p-3 h-[320px]">
-      <ResponsiveContainer width="100%" height="100%">
-        {enhanced}
-      </ResponsiveContainer>
+    <div className="card" style={{padding:12}}>
+      <div style={{height:320}}>
+        <ResponsiveContainer width="100%" height="100%">
+          {render(common)}
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
