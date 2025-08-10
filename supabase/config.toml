@@ -2,3 +2,12 @@ project_id = "vdsryddwzhcnoksamkep"
 
 [functions.monday-sync]
 verify_jwt = true
+
+[functions.model-save]
+verify_jwt = false
+
+[functions.model-get]
+verify_jwt = false
+
+[functions.query-aggregate]
+verify_jwt = false
