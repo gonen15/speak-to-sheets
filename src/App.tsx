@@ -22,6 +22,7 @@ import DashboardView from "./pages/DashboardView";
 import { I18nProvider } from "./i18n/i18n";
 import { DataStoreProvider } from "./store/dataStore";
 import ExecutiveHub from "@/pages/ExecutiveHub";
+import ModelWizard from "@/pages/ModelWizard";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
                 <Route path="/datasets" element={<Datasets />} />
                 <Route path="/datasets/:id" element={<DatasetDetail />} />
                 <Route path="/model" element={<Model />} />
+                <Route path="/model/wizard" element={<ModelWizard />} />
                 <Route path="/dashboards" element={<Dashboards />} />
                 <Route path="/dashboards/sales" element={<SalesDashboard />} />
                 <Route path="/dashboards/pilot" element={<PilotDashboard />} />
