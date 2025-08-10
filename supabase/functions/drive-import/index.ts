@@ -64,6 +64,37 @@ async function getSpreadsheetSheets(apiKey: string, spreadsheetId: string) {
   return (json.sheets || []).map((s: any) => s.properties) as Array<{ sheetId: number; title: string }>;
 }
 
+async function scrapeFolderPublic(folderId: string) {
+  const url = `https://drive.google.com/drive/folders/${folderId}`;
+  const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+  if (!res.ok) throw new Error(`Scrape failed: ${res.status}`);
+  const html = await res.text();
+
+  const seen = new Set<string>();
+  const out: Array<{ id: string; name: string; mimeType: string }> = [];
+
+  // Find spreadsheet links
+  const reSheets = /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = reSheets.exec(html))) {
+    const id = m[1];
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name: `Sheet ${id}`, mimeType: "application/vnd.google-apps.spreadsheet" });
+  }
+
+  // Find file links (may include CSV)
+  const reFiles = /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)\//g;
+  while ((m = reFiles.exec(html))) {
+    const id = m[1];
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name: `File ${id}`, mimeType: "text/csv" });
+  }
+
+  return out;
+}
+
 async function exportSheetCsv(apiKey: string, spreadsheetId: string, gid: number) {
   // Try Docs export per sheet (supports gid)
   try {
@@ -110,7 +141,21 @@ Deno.serve(async (req) => {
     }
 
     console.log("drive-import: start", { folderId });
-    const files = await listFolderFiles(apiKey, folderId);
+    let files: Array<{ id: string; name: string; mimeType: string }>; 
+    try {
+      files = await listFolderFiles(apiKey, folderId);
+    } catch (err) {
+      console.warn("drive-import: list failed, fallback to scrape", err);
+      files = [];
+    }
+    if (!files.length) {
+      try {
+        files = await scrapeFolderPublic(folderId);
+      } catch (err2) {
+        console.error("drive-import: scrape failed", err2);
+        files = [];
+      }
+    }
     console.log("drive-import: files found", files.length);
 
     const out: any[] = [];
