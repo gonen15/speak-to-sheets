@@ -382,12 +382,52 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_sources: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          dataset_id: string
+          enabled: boolean
+          id: string
+          kind: string
+          ref: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          dataset_id: string
+          enabled?: boolean
+          id?: string
+          kind: string
+          ref: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          dataset_id?: string
+          enabled?: boolean
+          id?: string
+          kind?: string
+          ref?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_sources_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       uploaded_datasets: {
         Row: {
           columns: string[]
           created_at: string | null
           created_by: string | null
+          file_hash: string | null
           id: string
+          is_revoked: boolean
           name: string
           row_count: number | null
           source_url: string | null
@@ -397,7 +437,9 @@ export type Database = {
           columns: string[]
           created_at?: string | null
           created_by?: string | null
+          file_hash?: string | null
           id?: string
+          is_revoked?: boolean
           name: string
           row_count?: number | null
           source_url?: string | null
@@ -407,7 +449,9 @@ export type Database = {
           columns?: string[]
           created_at?: string | null
           created_by?: string | null
+          file_hash?: string | null
           id?: string
+          is_revoked?: boolean
           name?: string
           row_count?: number | null
           source_url?: string | null
@@ -514,6 +558,10 @@ export type Database = {
       monday_cv_value: {
         Args: { colvals: Json; col_id: string }
         Returns: Json
+      }
+      revoke_dataset_access: {
+        Args: { p_dataset_id: string; p_revoke?: boolean }
+        Returns: undefined
       }
     }
     Enums: {

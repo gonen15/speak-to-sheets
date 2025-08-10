@@ -10,6 +10,7 @@ import { useDataStore } from "@/store/dataStore";
 import { driveImport } from "@/lib/supabaseEdge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { datasetReplace } from "@/lib/supabaseEdge";
 
 const Datasets = () => {
   const { t } = useI18n();

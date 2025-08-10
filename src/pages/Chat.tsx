@@ -5,83 +5,88 @@ import { Textarea } from "@/components/ui/textarea";
 import PageMeta from "@/components/common/PageMeta";
 import { useI18n } from "@/i18n/i18n";
 import { useDataStore } from "@/store/dataStore";
+import { aiChat } from "@/lib/supabaseEdge";
+import { useToast } from "@/hooks/use-toast";
 
 const Chat = () => {
   const { t } = useI18n();
-  const { datasets, semanticModels, aggregate } = useDataStore();
-  const [datasetId] = useState<string>(datasets[0]?.id);
-  const model = datasetId ? semanticModels[datasetId] : undefined;
-  const [question, setQuestion] = useState("");
-  const [sql, setSql] = useState<string>("");
-  const [ran, setRan] = useState(false);
+  const { datasets } = useDataStore();
+  const { toast } = useToast();
 
-  const data = useMemo(() => (ran && model) ? aggregate({ datasetId, metricName: model.metrics[0]?.name || "Revenue", dimension: model.dimensions[0] }) : [], [ran, model]);
+  const [datasetId, setDatasetId] = useState<string | undefined>(datasets[0]?.id);
+  const [msgs, setMsgs] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const draftSql = () => {
-    if (!model) return;
-    const table = `data_${datasetId}`;
-    const metric = model.metrics[0];
-    const dim = model.dimensions[0] || (model.dateColumn ? `date_trunc('month', ${model.dateColumn})` : undefined);
-    const sqlText = `SELECT ${dim ? `${dim} AS bucket, ` : ''}${metric.expression.replace(/sum\(/g, 'SUM(')} AS value FROM ${table}${dim ? ` GROUP BY 1 ORDER BY 1` : ''} LIMIT 1000;`;
-    setSql(sqlText);
-    setRan(false);
-  };
+  async function send() {
+    const content = input.trim();
+    if (!content) return;
+    const next = [...msgs, { role: "user" as const, content }];
+    setMsgs(next);
+    setInput("");
+    setLoading(true);
+    try {
+      const res = await aiChat({ messages: next, datasetId });
+      if (!res.ok) throw new Error("AI error");
+      setMsgs([...next, { role: "assistant", content: res.content }]);
+    } catch (e: any) {
+      toast({ title: "AI chat failed", description: String(e?.message || e), variant: "destructive" as any });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <main className="container mx-auto py-10">
-      <PageMeta title="CGC DataHub — ChatSQL" description="Ask in natural language, preview SQL, then execute safely." path="/chat" />
+      <PageMeta title="AI Chat — Insights" description="Ask questions in HE/EN; get insights and summaries." path="/chat" />
       <h1 className="text-2xl font-semibold mb-6">{t("chat")}</h1>
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>{t("ask")}</CardTitle>
-            <CardDescription>Preview before run</CardDescription>
+            <CardDescription>Bilingual HE/EN assistant with data context</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Textarea rows={6} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="לדוגמה: השווה GM% בין מותגים ברוסיה ביוני 2025" />
+            {datasets.length > 0 && (
+              <select
+                className="w-full border rounded px-3 py-2 text-sm"
+                value={datasetId}
+                onChange={(e) => setDatasetId(e.target.value || undefined)}
+              >
+                <option value="">No dataset context</option>
+                {datasets.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <Textarea rows={6} value={input} onChange={(e) => setInput(e.target.value)} placeholder="לדוגמה: מהם הטרנדים במכירות ביוני?" />
             <div className="flex gap-3">
-              <Button variant="secondary" onClick={draftSql}>Draft SQL</Button>
-              <Button onClick={() => setRan(true)} disabled={!sql}>{t("run")}</Button>
+              <Button onClick={send} disabled={loading}>{loading ? t("loading") : t("send")}</Button>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>{t("sqlPreview")}</CardTitle>
-            <CardDescription>needsApproval: true</CardDescription>
+            <CardTitle>Conversation</CardTitle>
+            <CardDescription>AI responses appear here</CardDescription>
           </CardHeader>
           <CardContent>
-            <pre className="text-sm bg-muted p-3 rounded-md overflow-auto"><code>{sql || "-- Draft SQL will appear here"}</code></pre>
-          </CardContent>
-        </Card>
-      </div>
-
-      {ran && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>{t("results")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="text-left py-2 pr-4 border-b">bucket</th>
-                    <th className="text-left py-2 pr-4 border-b">value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.map((r) => (
-                    <tr key={r.key} className="border-b"><td className="py-2 pr-4">{r.key}</td><td className="py-2 pr-4">{r.value.toFixed(2)}</td></tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-3">
+              {msgs.length === 0 && <div className="text-sm text-muted-foreground">Start by asking a question…</div>}
+              {msgs.map((m, idx) => (
+                <div key={idx} className="text-sm">
+                  <div className="font-medium">{m.role === "user" ? "You" : "Assistant"}</div>
+                  <div className="whitespace-pre-wrap">{m.content}</div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
-      )}
+      </div>
     </main>
   );
 };

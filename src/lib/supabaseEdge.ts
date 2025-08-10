@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"; // משתמש ב-client הקיים שלך
 
-export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard";
+export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard" | "dataset-replace" | "ai-chat";
 
 export interface CallEdgeOptions {
   body?: unknown;
@@ -125,4 +125,12 @@ export function getDashboard(id: string) {
 
 export function runWidget(query: any) {
   return callEdge<{ ok: boolean; rows: any[]; sql: string }>("dashboard", { body: { action: "run", query } });
+}
+
+export function aiChat(payload: { messages: Array<{ role: "user" | "assistant" | "system"; content: string }>; datasetId?: string }) {
+  return callEdge<{ ok: boolean; content: string; rows: any[]; sql?: string }>("ai-chat", { body: payload });
+}
+
+export function datasetReplace(payload: { datasetId: string; rows: any[]; columns: string[]; fileHash?: string; sourceUrl?: string }) {
+  return callEdge<{ ok: boolean; replaced: number }>("dataset-replace", { body: payload });
 }
