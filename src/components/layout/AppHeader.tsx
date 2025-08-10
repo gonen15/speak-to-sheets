@@ -25,6 +25,9 @@ const AppHeader = () => {
           CGC DataHub
         </Link>
         <nav className="hidden md:flex items-center gap-1" aria-label={t("mainNav")}>
+          <NavLink to="/executive" className={linkClass}>
+            Executive
+          </NavLink>
           <NavLink to="/datasets" className={linkClass}>
             {t("datasets")}
           </NavLink>
