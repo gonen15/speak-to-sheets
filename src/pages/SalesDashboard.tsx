@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from "react";
 import PageMeta from "@/components/common/PageMeta";
-import { queryAggregate } from "@/lib/supabaseEdge";
+import { queryAggregate, saveSemanticModel } from "@/lib/supabaseEdge";
 import KPI from "@/components/ui/KPI";
 import PillFilters from "@/components/ui/PillFilters";
 import Section from "@/components/ui/Section";
 import ChartFrame from "@/components/charts/ChartFrame";
 import { BarChart, Bar, Legend } from "recharts";
+import { useToast } from "@/hooks/use-toast";
 
 function quarterRange(d = new Date()){
   const m=d.getMonth(); const s=[0,3,6,9][Math.floor(m/3)];
@@ -21,6 +22,29 @@ export default function SalesDashboard(){
   const [series,setSeries]=useState<any[]>([]);
 
   const disabled = useMemo(()=>!boardId||loading,[boardId,loading]);
+  const { toast } = useToast();
+
+  async function seed(){
+    if(!boardId) return;
+    try{
+      const bid=Number(boardId);
+      await saveSemanticModel({
+        boardId: bid,
+        name: "Sales Pipeline",
+        dateColumn: "date",
+        dimensions: ["status","owner","brand","country","client"],
+        metrics: [
+          { key:"amount_total", label:"Total Amount", sql:"sum(coalesce(amount,0))", format:"currency" },
+          { key:"items",        label:"Items",        sql:"count(*)",               format:"number"   },
+          { key:"won",          label:"Won",          sql:"sum(case when status='Won' then 1 else 0 end)", format:"number" },
+          { key:"lost",         label:"Lost",         sql:"sum(case when status='Lost' then 1 else 0 end)", format:"number" },
+          { key:"win_rate",     label:"Win Rate",     sql:"(sum(case when status='Won' then 1 else 0 end)::decimal / nullif(sum(case when status in ('Won','Lost') then 1 else 0 end),0))", format:"percent" }
+        ],
+        glossary: { "לקוח":"client","מותג":"brand","בעלים":"owner","סטטוס":"status","סכום":"amount" }
+      });
+      toast({ title:"הוגדר מודל סמנטי", description:"לחצו רענון להטענת KPI" });
+    }catch(e:any){ toast({ title:"שמירת מודל נכשלה", description:String(e), variant:"destructive" as any }); }
+  }
 
   async function load(){
     if(!boardId) return; setLoading(true);
@@ -55,6 +79,7 @@ export default function SalesDashboard(){
           >
             רענון
           </button>
+          <button className="btn" onClick={seed} disabled={!boardId || loading}>שמור מודל</button>
         </div>
       </div>
 
