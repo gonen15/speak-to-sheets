@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      dataset_insights: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          dataset_id: string
+          id: string
+          kind: string | null
+          payload: Json
+          severity: string
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          dataset_id: string
+          id?: string
+          kind?: string | null
+          payload: Json
+          severity?: string
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          dataset_id?: string
+          id?: string
+          kind?: string | null
+          payload?: Json
+          severity?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_insights_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dataset_models: {
         Row: {
           created_at: string

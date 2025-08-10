@@ -100,7 +100,7 @@ export function aggregateDataset(payload: {
     p_limit: payload?.limit ?? 1000,
   };
   // Call RPC directly
-  return supabase.rpc("aggregate_dataset", body);
+  return supabase.rpc("aggregate_dataset", body).maybeSingle();
 }
 
 export function generateInsights(payload: { datasetId: string; sampleSize?: number }) {

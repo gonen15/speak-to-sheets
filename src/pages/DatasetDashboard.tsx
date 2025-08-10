@@ -102,7 +102,7 @@ export default function DatasetDashboard(){
             <option value="count">count(*)</option>
             {(meta?.columns||[]).map((c:string)=>(<option key={c} value={c}>{`sum(${c})`}</option>))}
           </select>
-          <select className="input" value={dateField||""} onChange={(e)=>setDateField(e.target.value||"")}}>
+          <select className="input" value={dateField||""} onChange={(e)=>setDateField(e.target.value||"")}>
             <option value="">(no date)</option>
             {(meta?.columns||[]).map((c:string)=>(<option key={c} value={c}>{c}</option>))}
           </select>
