@@ -37,16 +37,20 @@ const Datasets = () => {
     const form = e.currentTarget as HTMLFormElement & { folderUrl: { value: string } };
     const folderUrl = form.folderUrl.value.trim();
     if (!folderUrl) return;
-    const res = await driveImport({ folderUrl });
-    const files = (res.files || []).filter((f: any) => f.csv && !f.error);
-    if (files.length === 0) {
-      toast({ title: "לא נמצאו קבצי CSV/Sheets", description: "ודא שהתיקייה והקבצים משותפים כ-Anyone with the link – Viewer", variant: "destructive" as any });
-      return;
+    try {
+      const res = await driveImport({ folderUrl });
+      const files = (res.files || []).filter((f: any) => f.csv && !f.error);
+      if (files.length === 0) {
+        toast({ title: "לא נמצאו קבצי CSV/Sheets", description: "ודא שהתיקייה והקבצים משותפים כ-Anyone with the link – Viewer", variant: "destructive" as any });
+        return;
+      }
+      for (const f of files) {
+        importCsvText(f.name || "Drive CSV", f.csv, f.sourceUrl);
+      }
+      toast({ title: `Imported ${files.length} files`, description: "Drive folder import completed" });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: String(err), variant: "destructive" as any });
     }
-    for (const f of files) {
-      importCsvText(f.name || "Drive CSV", f.csv, f.sourceUrl);
-    }
-    toast({ title: `Imported ${files.length} files`, description: "Drive folder import completed" });
   };
   return (
     <main className="container mx-auto py-10">

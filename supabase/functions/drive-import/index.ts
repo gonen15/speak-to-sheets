@@ -21,29 +21,38 @@ async function listFolderFiles(apiKey: string, folderId: string) {
   const base = "https://www.googleapis.com/drive/v3/files";
   const q = `'${folderId}' in parents and trashed = false`;
   const fields = "nextPageToken,files(id,name,mimeType)";
-  let pageToken: string | undefined;
-  const out: Array<{ id: string; name: string; mimeType: string }> = [];
 
-  do {
-    const url = new URL(base);
-    url.searchParams.set("q", q);
-    url.searchParams.set("fields", fields);
-    url.searchParams.set("key", apiKey);
-    url.searchParams.set("pageSize", "1000");
-    url.searchParams.set("supportsAllDrives", "true");
-    url.searchParams.set("includeItemsFromAllDrives", "true");
-    url.searchParams.set("corpora", "allDrives");
-    if (pageToken) url.searchParams.set("pageToken", pageToken);
+  async function runQuery(params: Record<string, string>) {
+    let pageToken: string | undefined;
+    const out: Array<{ id: string; name: string; mimeType: string }> = [];
+    do {
+      const url = new URL(base);
+      url.searchParams.set("q", q);
+      url.searchParams.set("fields", fields);
+      url.searchParams.set("key", apiKey);
+      url.searchParams.set("pageSize", "1000");
+      if (pageToken) url.searchParams.set("pageToken", pageToken);
+      for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+      const res = await fetch(url.toString());
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Drive list failed: ${res.status} ${text}`);
+      }
+      const json = await res.json();
+      (json.files || []).forEach((f: any) => out.push({ id: f.id, name: f.name, mimeType: f.mimeType }));
+      pageToken = json.nextPageToken || undefined;
+    } while (pageToken);
+    return out;
+  }
 
-    const res = await fetch(url.toString());
-    if (!res.ok) throw new Error(`Drive list failed: ${res.status}`);
-    const json = await res.json();
-    (json.files || []).forEach((f: any) => out.push({ id: f.id, name: f.name, mimeType: f.mimeType }));
-    pageToken = json.nextPageToken || undefined;
-  } while (pageToken);
-
-  return out;
+  // Try with All Drives first, then fallback without
+  try {
+    return await runQuery({ supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
+  } catch (_e) {
+    return await runQuery({});
+  }
 }
+
 
 async function getSpreadsheetSheets(apiKey: string, spreadsheetId: string) {
   const metaUrl = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`);
