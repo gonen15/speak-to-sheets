@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"; // משתמש ב-client הקיים שלך
 
-export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard" | "dataset-replace" | "ai-chat" | "executive-snapshot" | "filters-save" | "filters-get" | "aggregate-run";
+export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard" | "dataset-replace" | "ai-chat" | "executive-snapshot" | "filters-save" | "filters-get" | "aggregate-run" | "goals-save" | "goals-snapshot" | "insights-digest";
 
 export interface CallEdgeOptions {
   body?: unknown;
@@ -146,4 +146,20 @@ export function filtersGet(key = 'global_filters') {
 
 export function aggregateRun(payload: { source:'dataset'|'monday'; refId:string; metrics:string[]; dimensions?:string[]; filters?:AggregateFilter[]; dateRange?:{field?:string|null; from?:string|null; to?:string|null}; limit?:number }){
   return callEdge<{ ok:boolean; rows:any[]; sql?:string; cached?:boolean }>("aggregate-run", { body: payload });
+}
+
+// Stage 8 helpers
+export function goalsSave(payload:{
+  id?: string; department:"sales"|"finance"|"marketing";
+  source:"dataset"|"monday"; refId:string|number;
+  metricKey:string; label:string; period:"monthly"|"quarterly";
+  target:number; dateField?:string; startDate?:string; endDate?:string; notify?:boolean;
+}) { return callEdge<{ok:boolean; id:string}>("goals-save",{ body: payload }); }
+
+export function goalsSnapshot(){
+  return callEdge<{ok:boolean; snapshots:Array<{goalId:string;label:string;period:string;from:string;to:string;current:number;target:number;forecast:number;onTrack:boolean}>}>("goals-snapshot",{ body:{} });
+}
+
+export function insightsDigest(){
+  return callEdge<{ok:boolean; summary:string; actions:Array<{kind:string;label:string;payload:any}>}>("insights-digest",{ body:{} });
 }

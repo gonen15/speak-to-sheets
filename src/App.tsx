@@ -23,6 +23,7 @@ import { I18nProvider } from "./i18n/i18n";
 import { DataStoreProvider } from "./store/dataStore";
 import ExecutiveHub from "@/pages/ExecutiveHub";
 import ModelWizard from "@/pages/ModelWizard";
+import Goals from "@/pages/Goals";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
                 <Route path="/dashboards/builder" element={<DashboardBuilder/>} />
                 <Route path="/dashboards/view" element={<DashboardView/>} />
                 <Route path="/executive" element={<ExecutiveHub/>} />
+                <Route path="/goals" element={<Goals/>} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/settings" element={<Settings />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

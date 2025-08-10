@@ -28,6 +28,9 @@ const AppHeader = () => {
           <NavLink to="/executive" className={linkClass}>
             Executive
           </NavLink>
+          <NavLink to="/goals" className={linkClass}>
+            Goals
+          </NavLink>
           <NavLink to="/datasets" className={linkClass}>
             {t("datasets")}
           </NavLink>

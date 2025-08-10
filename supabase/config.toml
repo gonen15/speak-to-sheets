@@ -47,3 +47,12 @@ verify_jwt = true
 
 [functions.aggregate-run]
 verify_jwt = true
+
+[functions.goals-save]
+verify_jwt = true
+
+[functions.goals-snapshot]
+verify_jwt = true
+
+[functions.insights-digest]
+verify_jwt = true

@@ -4,6 +4,7 @@ import KPI from "@/components/ui/KPI";
 import ChartFrame from "@/components/charts/ChartFrame";
 import { LineChart, Line, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { goalsSnapshot, insightsDigest } from "@/lib/supabaseEdge";
 
  type KPIMap = Record<string, { main:number; count:number; label:string }>;
  type Trend = { dept:string; series: Array<{date:string; value:number}> };
@@ -13,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
   const [kpis,setKpis] = useState<KPIMap>({});
   const [trends,setTrends] = useState<Trend[]>([]);
   const [tops,setTops] = useState<Top[]>([]);
+  const [goals,setGoals] = useState<any[]>([]);
+  const [digest,setDigest] = useState<{summary:string;actions:any[]}|null>(null);
   const [loading,setLoading] = useState(false);
   const [err,setErr] = useState<string|null>(null);
 
@@ -28,7 +31,14 @@ import { supabase } from "@/integrations/supabase/client";
     finally{ setLoading(false); }
   }
 
-  useEffect(()=>{ load(); },[]);
+  async function loadExtras(){
+    try{
+      const g = await goalsSnapshot(); setGoals(g.snapshots||[]);
+      const d = await insightsDigest(); if(d.ok) setDigest({ summary: d.summary, actions: d.actions||[] });
+    }catch(e:any){ console.error("Failed to load extras:", e); }
+  }
+
+  useEffect(()=>{ load(); loadExtras(); },[]);
 
   return (
     <main className="container mx-auto py-8">
@@ -72,6 +82,55 @@ import { supabase } from "@/integrations/supabase/client";
           </div>
         ))}
       </section>
+
+      {/* Highlights & Actions */}
+      <section className="card p-4 mt-6">
+        <div className="label mb-2">Highlights & Actions</div>
+        {digest?.summary ? (
+          <div className="prose text-sm whitespace-pre-wrap mb-3">{digest.summary}</div>
+        ) : (
+          <div className="text-sm opacity-70 mb-3">No insights yet.</div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {digest?.actions?.map((a,i)=>(
+            <button key={i} className="btn btn-sm" onClick={()=>{
+              // TODO: wire compare/drill using your queryAggregate
+              console.log("Action:", a);
+            }}>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Goals Progress */}
+      {goals.length > 0 && (
+        <section className="grid md:grid-cols-3 gap-4 mt-6">
+          <div className="col-span-full">
+            <div className="label mb-2">Goals Progress</div>
+          </div>
+          {goals.map((g:any)=>(
+            <div key={g.goalId} className="card p-4">
+              <div className="flex justify-between mb-2">
+                <div className="label text-sm">{g.label}</div>
+                <div className={`text-xs ${g.onTrack ? "text-green-600" : "text-amber-600"}`}>
+                  {g.onTrack ? "On Track" : "At Risk"}
+                </div>
+              </div>
+              <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-2">
+                <div 
+                  className={`h-2 ${g.onTrack ? "bg-emerald-500" : "bg-amber-500"}`} 
+                  style={{width:`${Math.min(100, Math.round((g.current/g.target)*100))}%`}}
+                ></div>
+              </div>
+              <div className="text-xs">
+                {Intl.NumberFormat().format(g.current)} / {Intl.NumberFormat().format(g.target)} 
+                <span className="opacity-70"> • Forecast {Intl.NumberFormat().format(g.forecast)}</span>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       <div className="toolbar mt-6">
         <button className="btn" onClick={load} disabled={loading}>{loading ? "Loading…" : "Refresh"}</button>
