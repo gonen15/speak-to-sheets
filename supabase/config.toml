@@ -26,3 +26,12 @@ verify_jwt = true
 
 [functions.nl-query]
 verify_jwt = true
+
+[functions.model-auto]
+verify_jwt = true
+
+[functions.dashboard]
+verify_jwt = true
+
+[functions.alerts-run]
+verify_jwt = true

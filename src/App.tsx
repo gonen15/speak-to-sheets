@@ -17,6 +17,8 @@ import Settings from "./pages/Settings";
 import SalesDashboard from "./pages/SalesDashboard";
 import PilotDashboard from "./pages/PilotDashboard";
 import DatasetDashboard from "./pages/DatasetDashboard";
+import DashboardBuilder from "./pages/DashboardBuilder";
+import DashboardView from "./pages/DashboardView";
 import { I18nProvider } from "./i18n/i18n";
 import { DataStoreProvider } from "./store/dataStore";
 
@@ -42,6 +44,8 @@ const App = () => (
                 <Route path="/dashboards/pilot" element={<PilotDashboard />} />
                 <Route path="/dashboards/dataset/:id" element={<DatasetDashboard />} />
                 <Route path="/dashboards/:id" element={<DashboardDetail />} />
+                <Route path="/dashboards/builder" element={<DashboardBuilder/>} />
+                <Route path="/dashboards/view" element={<DashboardView/>} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/settings" element={<Settings />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"; // משתמש ב-client הקיים שלך
 
-export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query";
+export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard";
 
 export interface CallEdgeOptions {
   body?: unknown;
@@ -111,3 +111,18 @@ export function nlQuery(payload: { datasetId: string; question: string }) {
   return callEdge<{ ok:boolean; plan:any; rows:any[]; sql:string; answer:string }>("nl-query", { body: payload });
 }
 
+export function autoModel(payload: { source: "dataset"; datasetId: string } | { source: "monday"; boardId: number }) {
+  return callEdge<{ ok: boolean; model: any }>("model-auto", { body: payload });
+}
+
+export function saveDashboard(payload: { dashboard: any; widgets: any[] }) {
+  return callEdge<{ ok: boolean; dashboard: any }>("dashboard", { body: { action: "save", ...payload } });
+}
+
+export function getDashboard(id: string) {
+  return callEdge<{ ok: boolean; dashboard: any; widgets: any[] }>("dashboard", { body: { action: "get", id } });
+}
+
+export function runWidget(query: any) {
+  return callEdge<{ ok: boolean; rows: any[]; sql: string }>("dashboard", { body: { action: "run", query } });
+}
