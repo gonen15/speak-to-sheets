@@ -351,6 +351,42 @@ export type Database = {
         }
         Relationships: []
       }
+      monday_board_mappings: {
+        Row: {
+          board_id: number
+          brand_id: string | null
+          client_id: string | null
+          country_id: string | null
+          date_id: string | null
+          numbers_id: string | null
+          person_id: string | null
+          status_id: string | null
+          timeline_id: string | null
+        }
+        Insert: {
+          board_id: number
+          brand_id?: string | null
+          client_id?: string | null
+          country_id?: string | null
+          date_id?: string | null
+          numbers_id?: string | null
+          person_id?: string | null
+          status_id?: string | null
+          timeline_id?: string | null
+        }
+        Update: {
+          board_id?: number
+          brand_id?: string | null
+          client_id?: string | null
+          country_id?: string | null
+          date_id?: string | null
+          numbers_id?: string | null
+          person_id?: string | null
+          status_id?: string | null
+          timeline_id?: string | null
+        }
+        Relationships: []
+      }
       monday_boards: {
         Row: {
           created_at: string
