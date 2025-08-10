@@ -14,6 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
+      aggregate_cache: {
+        Row: {
+          created_at: string | null
+          id: string
+          rows: Json
+          signature: string
+          sql: string | null
+          ttl_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          rows: Json
+          signature: string
+          sql?: string | null
+          ttl_at: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          rows?: Json
+          signature?: string
+          sql?: string | null
+          ttl_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      alert_events: {
+        Row: {
+          happened_at: string | null
+          id: string
+          payload: Json
+          rule_id: string | null
+        }
+        Insert: {
+          happened_at?: string | null
+          id?: string
+          payload: Json
+          rule_id?: string | null
+        }
+        Update: {
+          happened_at?: string | null
+          id?: string
+          payload?: Json
+          rule_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_events_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "alert_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alert_rules: {
+        Row: {
+          channels: Json
+          condition: Json
+          created_at: string | null
+          created_by: string | null
+          dimension: string | null
+          enabled: boolean
+          id: string
+          metric: string
+          name: string
+          ref_id: string
+          source: string
+        }
+        Insert: {
+          channels?: Json
+          condition?: Json
+          created_at?: string | null
+          created_by?: string | null
+          dimension?: string | null
+          enabled?: boolean
+          id?: string
+          metric: string
+          name: string
+          ref_id: string
+          source: string
+        }
+        Update: {
+          channels?: Json
+          condition?: Json
+          created_at?: string | null
+          created_by?: string | null
+          dimension?: string | null
+          enabled?: boolean
+          id?: string
+          metric?: string
+          name?: string
+          ref_id?: string
+          source?: string
+        }
+        Relationships: []
+      }
       dataset_insights: {
         Row: {
           created_at: string | null
@@ -459,6 +560,45 @@ export type Database = {
           row_count?: number | null
           source_url?: string | null
           storage_path?: string
+        }
+        Relationships: []
+      }
+      user_prefs: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string | null
+          user_id: string
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string | null
+          user_id?: string
+          value?: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string | null
+          user_id?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          role: string
+          user_id: string
+        }
+        Insert: {
+          role: string
+          user_id: string
+        }
+        Update: {
+          role?: string
+          user_id?: string
         }
         Relationships: []
       }

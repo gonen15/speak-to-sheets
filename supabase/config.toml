@@ -38,3 +38,12 @@ verify_jwt = true
 
 [functions.executive-snapshot]
 verify_jwt = true
+
+[functions.filters-save]
+verify_jwt = true
+
+[functions.filters-get]
+verify_jwt = true
+
+[functions.aggregate-run]
+verify_jwt = true

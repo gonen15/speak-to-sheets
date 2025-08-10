@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"; // משתמש ב-client הקיים שלך
 
-export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard" | "dataset-replace" | "ai-chat" | "executive-snapshot";
+export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard" | "dataset-replace" | "ai-chat" | "executive-snapshot" | "filters-save" | "filters-get" | "aggregate-run";
 
 export interface CallEdgeOptions {
   body?: unknown;
@@ -133,4 +133,17 @@ export function aiChat(payload: { messages: Array<{ role: "user" | "assistant" |
 
 export function datasetReplace(payload: { datasetId: string; rows: any[]; columns: string[]; fileHash?: string; sourceUrl?: string; originalName?: string }) {
   return callEdge<{ ok: boolean; replaced: number }>("dataset-replace", { body: payload });
+}
+
+// Stage 5 helpers
+export function filtersSave(payload: { key: string; value: any }) {
+  return callEdge<{ ok: boolean; id?: string; updated_at?: string }>("filters-save", { body: payload });
+}
+
+export function filtersGet(key = 'global_filters') {
+  return callEdge<{ ok: boolean; value: any }>("filters-get", { body: { key } });
+}
+
+export function aggregateRun(payload: { source:'dataset'|'monday'; refId:string; metrics:string[]; dimensions?:string[]; filters?:AggregateFilter[]; dateRange?:{field?:string|null; from?:string|null; to?:string|null}; limit?:number }){
+  return callEdge<{ ok:boolean; rows:any[]; sql?:string; cached?:boolean }>("aggregate-run", { body: payload });
 }

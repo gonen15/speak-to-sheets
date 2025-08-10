@@ -55,39 +55,27 @@ Deno.serve(async (req) => {
     const to = now.toISOString().slice(0, 10);
     const from90 = new Date(now.getTime() - 90 * 86400000).toISOString().slice(0, 10);
 
+    // accept optional filters/dateRange from client
+    let reqBody: any = {};
+    try { reqBody = await req.json(); } catch {}
+    const globalFilters = Array.isArray(reqBody?.filters) ? reqBody.filters : [];
+    const dateRange = reqBody?.dateRange ?? { from: from90, to, field: null };
+
     async function runAgg(c: Cat, metrics: string[], dims: string[] = []) {
-      if (c.source === "dataset") {
-        const { data, error } = await supabase
-          .rpc("aggregate_dataset", {
-            p_dataset_id: c.ref_id,
-            p_metrics: metrics,
-            p_dimensions: dims,
-            p_filters: [],
-            p_date_from: from90,
-            p_date_to: to,
-            p_date_field: c.date_field ?? null,
-            p_limit: 1000,
-          })
-          .maybeSingle();
-        if (error) throw error;
-        return data;
-      } else {
-        const boardId = Number(c.ref_id);
-        const { data, error } = await supabase
-          .rpc("aggregate_items", {
-            p_board_id: boardId,
-            p_metrics: metrics,
-            p_dimensions: dims,
-            p_filters: [],
-            p_date_from: from90,
-            p_date_to: to,
-            p_date_field: c.date_field ?? null,
-            p_limit: 1000,
-          })
-          .maybeSingle();
-        if (error) throw error;
-        return data;
-      }
+      // Leverage aggregate-run for caching and consistent filtering
+      const { data, error } = await supabase.functions.invoke<{ ok:boolean; rows:any[]; sql?:string }>("aggregate-run", {
+        body: {
+          source: c.source,
+          refId: c.ref_id,
+          metrics,
+          dimensions: dims,
+          filters: globalFilters,
+          dateRange,
+          limit: 1000,
+        },
+      });
+      if (error) throw new Error(error.message);
+      return data;
     }
 
     function pickMetric(c: Cat, pref: string[], fallback = "count") {
@@ -118,7 +106,7 @@ Deno.serve(async (req) => {
       const trendDim = c.date_field || "date";
       try {
         const trend = await runAgg(c, [metricMain], [trendDim]);
-        const series = (trend?.rows || []).map((r: any) => ({ date: r[trendDim] || r.date, value: Number(r[metricMain] || 0) }));
+        const series = (trend?.rows || []).map((r: any) => ({ date: r[trendDim] || r.date, value: Number(r[metricMain] || r.value || 0) }));
         outTrend.push({ dept, series });
       } catch (_) {
         outTrend.push({ dept, series: [] });
@@ -128,7 +116,7 @@ Deno.serve(async (req) => {
         const kpi = await runAgg(c, [metricMain, metricCount], []);
         const krow = (kpi?.rows || [])[0] || {};
         outKPIs[dept] = {
-          main: Number(krow[metricMain] || 0),
+          main: Number(krow[metricMain] || krow.value || 0),
           count: Number(krow[metricCount] || 0),
           label: metricMain,
         };
@@ -141,7 +129,7 @@ Deno.serve(async (req) => {
         try {
           const top = await runAgg(c, [metricMain], [dim]);
           const rows = (top?.rows || [])
-            .sort((a: any, b: any) => Number(b[metricMain] || 0) - Number(a[metricMain] || 0))
+            .sort((a: any, b: any) => Number(b[metricMain] || b.value || 0) - Number(a[metricMain] || a.value || 0))
             .slice(0, 10)
             .map((r: any) => ({ ...r, value: Number(r[metricMain] || r.value || 0) }));
           outTop.push({ dept, dim, rows });
