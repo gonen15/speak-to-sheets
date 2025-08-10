@@ -30,6 +30,8 @@ async function listFolderFiles(apiKey: string, folderId: string) {
     url.searchParams.set("fields", fields);
     url.searchParams.set("key", apiKey);
     url.searchParams.set("pageSize", "1000");
+    url.searchParams.set("supportsAllDrives", "true");
+    url.searchParams.set("includeItemsFromAllDrives", "true");
     if (pageToken) url.searchParams.set("pageToken", pageToken);
 
     const res = await fetch(url.toString());
@@ -52,15 +54,24 @@ async function getSpreadsheetSheets(apiKey: string, spreadsheetId: string) {
   return (json.sheets || []).map((s: any) => s.properties) as Array<{ sheetId: number; title: string }>;
 }
 
-async function exportSheetCsv(spreadsheetId: string, gid: number) {
-  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Export csv failed: ${res.status}`);
-  return await res.text();
+async function exportSheetCsv(apiKey: string, spreadsheetId: string, gid: number) {
+  // Try Docs export per sheet (supports gid)
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Docs export failed: ${res.status}`);
+    return await res.text();
+  } catch (_e) {
+    // Fallback: Drive export (first sheet only)
+    const url2 = `https://www.googleapis.com/drive/v3/files/${spreadsheetId}/export?mimeType=text/csv&key=${apiKey}`;
+    const res2 = await fetch(url2);
+    if (!res2.ok) throw new Error(`Drive export failed: ${res2.status}`);
+    return await res2.text();
+  }
 }
 
-async function downloadCsvFile(fileId: string) {
-  const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+async function downloadCsvFile(apiKey: string, fileId: string) {
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`CSV download failed: ${res.status}`);
   return await res.text();
@@ -99,7 +110,7 @@ Deno.serve(async (req) => {
           const sheets = await getSpreadsheetSheets(apiKey, f.id);
           for (const s of sheets) {
             try {
-              const csv = await exportSheetCsv(f.id, s.sheetId);
+              const csv = await exportSheetCsv(apiKey, f.id, s.sheetId);
               out.push({
                 id: f.id,
                 name: `${f.name} — ${s.title}`,
@@ -114,7 +125,7 @@ Deno.serve(async (req) => {
             }
           }
         } else if (f.mimeType === "text/csv" || (f.name || "").toLowerCase().endsWith(".csv")) {
-          const csv = await downloadCsvFile(f.id);
+          const csv = await downloadCsvFile(apiKey, f.id);
           out.push({
             id: f.id,
             name: f.name,
