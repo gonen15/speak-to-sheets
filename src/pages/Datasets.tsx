@@ -7,10 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import PageMeta from "@/components/common/PageMeta";
 import { useI18n } from "@/i18n/i18n";
 import { useDataStore } from "@/store/dataStore";
+import { driveImport } from "@/lib/supabaseEdge";
+import { useToast } from "@/components/ui/use-toast";
 
 const Datasets = () => {
   const { t } = useI18n();
   const { datasets, importCsvText } = useDataStore();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   const onImportText = (e: React.FormEvent<HTMLFormElement>) => {
@@ -29,9 +32,21 @@ const Datasets = () => {
     navigate(`/datasets/${id}`);
   };
 
+  const onImportDrive = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement & { folderUrl: { value: string } };
+    const folderUrl = form.folderUrl.value.trim();
+    if (!folderUrl) return;
+    const res = await driveImport({ folderUrl });
+    const files = (res.files || []).filter((f: any) => f.csv && !f.error);
+    for (const f of files) {
+      importCsvText(f.name || "Drive CSV", f.csv, f.sourceUrl);
+    }
+    toast({ title: `Imported ${files.length} files`, description: "Drive folder import completed" });
+  };
   return (
     <main className="container mx-auto py-10">
-      <PageMeta title="CGC DataHub — Datasets" description="Import CSV or Google Sheets (as CSV) and preview data." path="/datasets" />
+      <PageMeta title="CGC DataHub — Datasets" description="Import CSV, Google Sheets, or Drive folder and preview data." path="/datasets" />
       <h1 className="text-2xl font-semibold mb-6">{t("datasets")}</h1>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -71,6 +86,22 @@ const Datasets = () => {
                 <Input id="url" name="url" placeholder="https://.../pub?output=csv" />
               </div>
               <Button type="submit">{t("importCsv")}</Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Google Drive Folder</CardTitle>
+            <CardDescription>Paste a shared folder URL to import all Google Sheets and CSV files.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-3" onSubmit={onImportDrive}>
+              <div className="space-y-2">
+                <Label htmlFor="folderUrl">Folder URL</Label>
+                <Input id="folderUrl" name="folderUrl" placeholder="https://drive.google.com/drive/folders/11uueYvA4ZMKzmnHWTS4YDGVJKuBYFSD8" />
+              </div>
+              <Button type="submit">Import from Drive</Button>
             </form>
           </CardContent>
         </Card>

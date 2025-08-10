@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"; // משתמש ב-client הקיים שלך
 
-export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch";
+export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import";
 
 export interface CallEdgeOptions {
   body?: unknown;
@@ -63,6 +63,12 @@ export function queryAggregate(payload: {
   limit?: number;
 }) {
   return callEdge<{ ok: boolean; rows: any[]; sql: string }>("query-aggregate", {
+    body: payload,
+  });
+}
+
+export function driveImport(payload: { folderUrl?: string; folderId?: string }) {
+  return callEdge<{ ok: boolean; count: number; files: any[] }>("drive-import", {
     body: payload,
   });
 }
