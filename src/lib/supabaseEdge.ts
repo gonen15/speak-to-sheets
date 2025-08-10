@@ -131,6 +131,6 @@ export function aiChat(payload: { messages: Array<{ role: "user" | "assistant" |
   return callEdge<{ ok: boolean; content: string; rows: any[]; sql?: string }>("ai-chat", { body: payload });
 }
 
-export function datasetReplace(payload: { datasetId: string; rows: any[]; columns: string[]; fileHash?: string; sourceUrl?: string }) {
+export function datasetReplace(payload: { datasetId: string; rows: any[]; columns: string[]; fileHash?: string; sourceUrl?: string; originalName?: string }) {
   return callEdge<{ ok: boolean; replaced: number }>("dataset-replace", { body: payload });
 }

@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE);
 
   try {
-    const { datasetId, rows, columns, fileHash, sourceUrl } = await req.json();
+    const { datasetId, rows, columns, fileHash, sourceUrl, originalName } = await req.json();
     if (!datasetId || !Array.isArray(rows) || !Array.isArray(columns)) {
       return new Response(JSON.stringify({ ok: false, error: "datasetId, rows[], columns[] required" }), {
         status: 400,
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
     const { error: upErr } = await admin
       .from("uploaded_datasets")
-      .update({ columns, file_hash: fileHash ?? null, source_url: sourceUrl ?? null })
+      .update({ columns, file_hash: fileHash ?? null, source_url: sourceUrl ?? null, original_name: originalName ?? null })
       .eq("id", datasetId);
     if (upErr) throw upErr;
 

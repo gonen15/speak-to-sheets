@@ -42,6 +42,7 @@ interface DataStoreContextType {
   getDataset: (id: string) => Dataset | undefined;
   saveModel: (model: SemanticModel) => void;
   aggregate: (params: { datasetId: string; metricName: string; dimension?: string }) => { key: string; value: number }[];
+  replaceDataset: (id: string, csvText: string) => Promise<void>;
   syncDataset: (id: string) => Promise<void>;
 }
 
@@ -196,6 +197,22 @@ export const DataStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return id;
   };
 
+  const replaceDataset: DataStoreContextType["replaceDataset"] = async (id, csvText) => {
+    const current = getDataset(id);
+    if (!current) return;
+    const { rows, columns } = parseCsv(csvText);
+    const updated: Dataset = {
+      ...current,
+      columns,
+      rows,
+      lastSyncAt: new Date().toISOString(),
+      status: "ready",
+    };
+    setDatasets((prev) => prev.map((d) => (d.id === id ? updated : d)));
+    const model = semanticModels[id] ?? defaultModel(id, columns);
+    await persistDatasetAndModel(updated, model, csvText);
+  };
+
   const loadDemo = () => {
     const datasetId = importCsvText("Demo Ice Cream", DEMO_CSV);
     setDashboards((prev) => [{ id: genId("db"), name: "Demo Dashboard", datasetId }, ...prev]);
@@ -308,7 +325,7 @@ export const DataStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const value = useMemo<DataStoreContextType>(
-    () => ({ datasets, dashboards, semanticModels, loadDemo, importCsvText, getDataset, saveModel, aggregate, syncDataset }),
+    () => ({ datasets, dashboards, semanticModels, loadDemo, importCsvText, getDataset, saveModel, aggregate, replaceDataset, syncDataset }),
     [datasets, dashboards, semanticModels]
   );
 

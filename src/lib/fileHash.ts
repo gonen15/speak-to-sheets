@@ -5,3 +5,7 @@ export async function sha256OfFile(file: File): Promise<string> {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
+
+export function normalizeFileName(name: string) {
+  return name.trim();
+}

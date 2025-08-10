@@ -1,10 +1,12 @@
+import React from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 import PageMeta from "@/components/common/PageMeta";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
+import { normalizeFileName } from "@/lib/fileHash";
 import { useI18n } from "@/i18n/i18n";
 import { useDataStore } from "@/store/dataStore";
 import { driveImport } from "@/lib/supabaseEdge";
@@ -14,12 +16,30 @@ import { datasetReplace } from "@/lib/supabaseEdge";
 
 const Datasets = () => {
   const { t } = useI18n();
-  const { datasets, importCsvText, loadDemo } = useDataStore();
+  const { datasets, importCsvText, loadDemo, replaceDataset } = useDataStore();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Import from Google Drive and CRM (Monday)
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [pendingReplace, setPendingReplace] = React.useState<null | { id: string; text: string; name: string }>(null);
 
+  const onUploadCsv = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement & { file: { files: FileList }; name?: { value: string } };
+    const file = form.file.files?.[0];
+    if (!file) return;
+    const desiredName = normalizeFileName((form.name?.value || file.name || "").trim());
+    const text = await file.text();
+    const existing = datasets.find((d) => d.name.toLowerCase() === desiredName.toLowerCase());
+    if (existing) {
+      setPendingReplace({ id: existing.id, text, name: existing.name });
+      setConfirmOpen(true);
+      return;
+    }
+    const id = importCsvText(desiredName || file.name, text, null);
+    toast({ title: "הועלה בהצלחה", description: desiredName });
+    navigate(`/datasets/${id}`);
+  };
   const onImportDrive = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget as HTMLFormElement & { folderUrl: { value: string } };
@@ -67,6 +87,26 @@ const Datasets = () => {
       <h1 className="text-2xl font-semibold mb-6">{t("datasets")}</h1>
 
       <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload CSV</CardTitle>
+            <CardDescription>Upload a CSV file. If the same name exists, you can replace its content.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-3" onSubmit={onUploadCsv}>
+              <div className="space-y-2">
+                <Label htmlFor="file">CSV File</Label>
+                <Input id="file" name="file" type="file" accept=".csv,text/csv" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Name (optional)</Label>
+                <Input id="name" name="name" placeholder="Dataset name" />
+              </div>
+              <Button type="submit">Upload</Button>
+            </form>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Google Drive Folder</CardTitle>
@@ -132,6 +172,30 @@ const Datasets = () => {
           ))}
         </ul>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="קובץ בשם זה כבר קיים"
+        message="האם להחליף את התוכן של הקובץ הקיים בנתונים החדשים?"
+        confirmText="החלף"
+        cancelText="ביטול"
+        onCancel={() => {
+          setConfirmOpen(false);
+          setPendingReplace(null);
+        }}
+        onConfirm={async () => {
+          if (!pendingReplace) return;
+          try {
+            await replaceDataset(pendingReplace.id, pendingReplace.text);
+            setConfirmOpen(false);
+            setPendingReplace(null);
+            toast({ title: "הוחלף בהצלחה", description: pendingReplace.name });
+            navigate(`/datasets/${pendingReplace.id}`);
+          } catch (e: any) {
+            toast({ title: "החלפה נכשלה", description: String(e), variant: "destructive" as any });
+          }
+        }}
+      />
     </main>
   );
 };

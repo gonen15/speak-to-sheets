@@ -429,6 +429,7 @@ export type Database = {
           id: string
           is_revoked: boolean
           name: string
+          original_name: string | null
           row_count: number | null
           source_url: string | null
           storage_path: string
@@ -441,6 +442,7 @@ export type Database = {
           id?: string
           is_revoked?: boolean
           name: string
+          original_name?: string | null
           row_count?: number | null
           source_url?: string | null
           storage_path: string
@@ -453,6 +455,7 @@ export type Database = {
           id?: string
           is_revoked?: boolean
           name?: string
+          original_name?: string | null
           row_count?: number | null
           source_url?: string | null
           storage_path?: string
