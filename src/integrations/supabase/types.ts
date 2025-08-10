@@ -425,6 +425,22 @@ export type Database = {
       }
     }
     Functions: {
+      aggregate_dataset: {
+        Args: {
+          p_dataset_id: string
+          p_metrics: string[]
+          p_dimensions?: string[]
+          p_filters?: Json
+          p_date_from?: string
+          p_date_to?: string
+          p_date_field?: string
+          p_limit?: number
+        }
+        Returns: {
+          rows: Json
+          sql: string
+        }[]
+      }
       aggregate_items: {
         Args: {
           p_board_id: number
