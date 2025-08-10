@@ -38,37 +38,38 @@ export default function SalesDashboard(){
 
   return (
     <main className="container">
-      <PageMeta title="Sales Dashboard — CGC DataHub" description="Minimal sales analytics with clean KPIs and charts." path="/dashboards/sales" />
+      <PageMeta title="דשבורד מכירות — CGC DataHub" description="מדדים מרכזיים וניתוח מהיר לפי סטטוסים. בחרו לוח ותקופה ולחצו רענון." path="/dashboards/sales" />
       <header className="mb-2">
-        <h1 className="text-xl font-semibold tracking-tight">Sales Dashboard</h1>
+        <h1 className="text-xl font-semibold tracking-tight">דשבורד מכירות</h1>
+        <p className="label mt-1">בחרו לוח ותקופה, ואז לחצו רענון.</p>
       </header>
 
       <div className="card" style={{padding:16}}>
         <div className="toolbar">
-          <input className="input" style={{maxWidth:220}} placeholder="Board ID" value={boardId} onChange={(e)=>setBoardId(e.target.value)} />
-          <PillFilters value={period} onChange={setPeriod} options={[{label:"This Q",value:"this_q"},{label:"YTD",value:"ytd"}]} />
+          <input className="input" style={{maxWidth:220}} placeholder="מספר לוח (Board ID)" value={boardId} onChange={(e)=>setBoardId(e.target.value)} />
+          <PillFilters value={period} onChange={setPeriod} options={[{label:"רבעון נוכחי",value:"this_q"},{label:"שנה עד כה",value:"ytd"}]} />
           <button
             className="btn"
             onClick={() => { if (!loading) load(); }}
             disabled={loading || !boardId}
           >
-            Refresh
+            רענון
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <KPI label="Total Amount" value={kpi?.amount_total} format="currency"/>
-        <KPI label="Items" value={kpi?.items} format="number"/>
-        <KPI label="Win Rate" value={kpi?.win_rate} format="percent"/>
+        <KPI label="סכום כולל" value={kpi?.amount_total} format="currency"/>
+        <KPI label="פריטים" value={kpi?.items} format="number"/>
+        <KPI label="שיעור זכייה" value={kpi?.win_rate} format="percent"/>
       </div>
 
-      <Section title="Amount by Status">
+      <Section title="סכום לפי סטטוס">
         <ChartFrame data={series} render={(common)=> (
           <BarChart data={series}>
             {common}
             <Legend />
-            <Bar dataKey="value" name="Amount" radius={[6,6,0,0]} />
+            <Bar dataKey="value" name="סכום" radius={[6,6,0,0]} />
           </BarChart>
         )} />
       </Section>
