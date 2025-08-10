@@ -17,14 +17,17 @@ function parseFolderId(input?: string | null): string | null {
   return m?.[1] ?? null;
 }
 
-async function listFolderFiles(apiKey: string, folderId: string) {
+async function listFolderFiles(apiKey: string, folderId: string, visited = new Set<string>()): Promise<Array<{ id: string; name: string; mimeType: string }>> {
+  if (visited.has(folderId)) return [];
+  visited.add(folderId);
+
   const base = "https://www.googleapis.com/drive/v3/files";
   const q = `'${folderId}' in parents and trashed = false`;
-  const fields = "nextPageToken,files(id,name,mimeType)";
+  const fields = "nextPageToken,files(id,name,mimeType,shortcutDetails(targetId,targetMimeType))";
 
-  async function runQuery(params: Record<string, string>) {
+  async function listOnce(params: Record<string, string>) {
     let pageToken: string | undefined;
-    const out: Array<{ id: string; name: string; mimeType: string }> = [];
+    const out: Array<any> = [];
     do {
       const url = new URL(base);
       url.searchParams.set("q", q);
@@ -39,18 +42,39 @@ async function listFolderFiles(apiKey: string, folderId: string) {
         throw new Error(`Drive list failed: ${res.status} ${text}`);
       }
       const json = await res.json();
-      (json.files || []).forEach((f: any) => out.push({ id: f.id, name: f.name, mimeType: f.mimeType }));
+      out.push(...(json.files || []));
       pageToken = json.nextPageToken || undefined;
     } while (pageToken);
     return out;
   }
 
-  // Try with All Drives first, then fallback without
+  let files: any[] = [];
   try {
-    return await runQuery({ supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
+    files = await listOnce({ supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
   } catch (_e) {
-    return await runQuery({});
+    files = await listOnce({});
   }
+
+  const results: Array<{ id: string; name: string; mimeType: string }> = [];
+  for (const f of files) {
+    const mime = f.mimeType as string;
+    if (mime === "application/vnd.google-apps.folder") {
+      const nested = await listFolderFiles(apiKey, f.id, visited);
+      results.push(...nested);
+      continue;
+    }
+    if (mime === "application/vnd.google-apps.shortcut") {
+      const targetId = f.shortcutDetails?.targetId as string | undefined;
+      const targetMime = f.shortcutDetails?.targetMimeType as string | undefined;
+      if (targetId) {
+        results.push({ id: targetId, name: f.name, mimeType: targetMime || "application/octet-stream" });
+      }
+      continue;
+    }
+    results.push({ id: f.id, name: f.name, mimeType: mime });
+  }
+
+  return results;
 }
 
 
