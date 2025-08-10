@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"; // משתמש ב-client הקיים שלך
 
-export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import";
+export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index";
 
 export interface CallEdgeOptions {
   body?: unknown;
@@ -75,4 +75,30 @@ export function driveImport(payload: { folderUrl?: string; folderId?: string }) 
   }>("drive-import", {
     body: payload,
   });
+}
+
+export function datasetIndex(payload: { name: string; storagePath?: string; signedUrl?: string; csv?: string }) {
+  return callEdge<{ ok: boolean; datasetId: string; columns: string[]; rows: number }>("dataset-index", { body: payload });
+}
+
+export function aggregateDataset(payload: {
+  datasetId: string;
+  metrics: string[];
+  dimensions?: string[];
+  filters?: Array<{ field: string; op: "=" | "!=" | "in" | "like"; value: any }>;
+  dateRange?: { field?: string; from?: string; to?: string };
+  limit?: number;
+}) {
+  const body = {
+    p_dataset_id: payload.datasetId,
+    p_metrics: payload.metrics,
+    p_dimensions: payload.dimensions ?? [],
+    p_filters: payload.filters ?? [],
+    p_date_from: payload?.dateRange?.from ?? null,
+    p_date_to: payload?.dateRange?.to ?? null,
+    p_date_field: payload?.dateRange?.field ?? null,
+    p_limit: payload?.limit ?? 1000,
+  };
+  // Call RPC directly
+  return supabase.rpc("aggregate_dataset", body);
 }

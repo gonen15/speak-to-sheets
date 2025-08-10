@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.drive-import]
 verify_jwt = false
+
+[functions.dataset-index]
+verify_jwt = true
