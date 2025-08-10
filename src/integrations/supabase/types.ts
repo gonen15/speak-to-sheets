@@ -14,7 +14,139 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      monday_boards: {
+        Row: {
+          created_at: string
+          id: number
+          name: string | null
+          state: string | null
+          updated_at: string
+          workspace: string | null
+        }
+        Insert: {
+          created_at?: string
+          id: number
+          name?: string | null
+          state?: string | null
+          updated_at?: string
+          workspace?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          name?: string | null
+          state?: string | null
+          updated_at?: string
+          workspace?: string | null
+        }
+        Relationships: []
+      }
+      monday_files: {
+        Row: {
+          asset_id: number
+          created_at: string
+          file_type: string | null
+          item_id: number
+          name: string | null
+          public_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          asset_id: number
+          created_at?: string
+          file_type?: string | null
+          item_id: number
+          name?: string | null
+          public_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: number
+          created_at?: string
+          file_type?: string | null
+          item_id?: number
+          name?: string | null
+          public_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monday_files_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "monday_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monday_items: {
+        Row: {
+          board_id: number
+          column_values: Json | null
+          created_at: string
+          group_id: string | null
+          id: number
+          monday_created_at: string | null
+          monday_updated_at: string | null
+          name: string | null
+          updated_at: string
+        }
+        Insert: {
+          board_id: number
+          column_values?: Json | null
+          created_at?: string
+          group_id?: string | null
+          id: number
+          monday_created_at?: string | null
+          monday_updated_at?: string | null
+          name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          board_id?: number
+          column_values?: Json | null
+          created_at?: string
+          group_id?: string | null
+          id?: number
+          monday_created_at?: string | null
+          monday_updated_at?: string | null
+          name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monday_items_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "monday_boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monday_sync_logs: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          meta: Json | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          meta?: Json | null
+          status: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          meta?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
