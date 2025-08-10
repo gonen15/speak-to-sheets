@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.dataset-index]
 verify_jwt = true
+
+[functions.insights-generate]
+verify_jwt = true
+
+[functions.nl-query]
+verify_jwt = true

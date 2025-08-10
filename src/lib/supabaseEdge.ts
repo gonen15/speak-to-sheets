@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"; // משתמש ב-client הקיים שלך
 
-export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index";
+export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query";
 
 export interface CallEdgeOptions {
   body?: unknown;
@@ -102,3 +102,12 @@ export function aggregateDataset(payload: {
   // Call RPC directly
   return supabase.rpc("aggregate_dataset", body);
 }
+
+export function generateInsights(payload: { datasetId: string; sampleSize?: number }) {
+  return callEdge<{ ok: boolean; count: number; insights: any[] }>("insights-generate", { body: payload });
+}
+
+export function nlQuery(payload: { datasetId: string; question: string }) {
+  return callEdge<{ ok:boolean; plan:any; rows:any[]; sql:string; answer:string }>("nl-query", { body: payload });
+}
+
