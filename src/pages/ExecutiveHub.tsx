@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import PageMeta from "@/components/common/PageMeta";
 import KPI from "@/components/ui/KPI";
 import ChartFrame from "@/components/charts/ChartFrame";
+import GlobalFilterBar from "@/components/ui/GlobalFilterBar";
+import InsightCard from "@/components/ui/InsightCard";
+import { JuliusSkeleton } from "@/components/ui/skeleton";
 import { LineChart, Line, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { goalsSnapshot, insightsDigest } from "@/lib/supabaseEdge";
@@ -18,6 +21,11 @@ import { goalsSnapshot, insightsDigest } from "@/lib/supabaseEdge";
   const [digest,setDigest] = useState<{summary:string;actions:any[]}|null>(null);
   const [loading,setLoading] = useState(false);
   const [err,setErr] = useState<string|null>(null);
+  
+  // Filter states
+  const [period, setPeriod] = useState("current_quarter");
+  const [department, setDepartment] = useState("all");
+  const [entity, setEntity] = useState("");
 
   async function load(){
     setLoading(true); setErr(null);
@@ -41,100 +49,187 @@ import { goalsSnapshot, insightsDigest } from "@/lib/supabaseEdge";
   useEffect(()=>{ load(); loadExtras(); },[]);
 
   return (
-    <main className="container mx-auto py-8">
-      <PageMeta title="Executive Hub — CGC DataHub" description="KPIs, trends, and top breakdowns across your data sources" path="/executive" />
-      <h1 className="text-2xl font-semibold mb-4">Executive Hub</h1>
-      {err ? <div className="card p-3">{err}</div> : null}
+    <main className="container">
+      <PageMeta title="דשבורד הנהלה — CGC DataHub" description="KPIs, מגמות ופירוקים מובילים מכל מקורות הנתונים" path="/executive" />
+      
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-semibold tracking-tight mb-2">דשבורד הנהלה</h1>
+        <p className="text-muted-foreground">בחרו לוח ותקופה, ואז לחצו רענון.</p>
+      </div>
 
-      <section className="grid md:grid-cols-3 gap-4">
-        {["sales","finance","marketing"].map((d)=> (
-          <div key={d} className="card p-4">
-            <div className="label mb-2">{d.toUpperCase()}</div>
-            <KPI label="Main" value={kpis?.[d]?.main ?? 0} format={d==="sales"?"currency":"number"} hint={kpis?.[d]?.label} />
-            <div className="mt-2"><KPI label="Count" value={kpis?.[d]?.count ?? 0} format="number" /></div>
-          </div>
-        ))}
+      {/* Global Filters */}
+      <GlobalFilterBar
+        period={period}
+        onPeriodChange={setPeriod}
+        department={department}
+        onDepartmentChange={setDepartment}
+        entity={entity}
+        onEntityChange={setEntity}
+        onApply={load}
+        onReset={() => {
+          setPeriod("current_quarter");
+          setDepartment("all");
+          setEntity("");
+        }}
+        loading={loading}
+        className="mb-6"
+      />
+
+      {err ? (
+        <div className="julius-card p-4 border-l-4 border-l-destructive mb-6">
+          <div className="text-destructive">{err}</div>
+        </div>
+      ) : null}
+
+      {/* KPI Cards */}
+      <section className="julius-grid grid-cols-1 md:grid-cols-3 mb-8">
+        {loading ? (
+          <>
+            <JuliusSkeleton variant="kpi" />
+            <JuliusSkeleton variant="kpi" />
+            <JuliusSkeleton variant="kpi" />
+          </>
+        ) : (
+          ["sales","finance","marketing"].map((d)=> (
+            <KPI 
+              key={d}
+              label={d === "sales" ? "מכירות" : d === "finance" ? "כספים" : "שיווק"}
+              value={kpis?.[d]?.main ?? 0} 
+              format={d==="sales"?"currency":"number"} 
+              hint={kpis?.[d]?.label}
+              delta={0.12} // Mock MoM change
+              deltaLabel="לעומת חודש קודם"
+            />
+          ))
+        )}
       </section>
 
-      <section className="grid md:grid-cols-2 gap-4 mt-6">
-        {trends.map((t)=> (
-          <div key={t.dept} className="card p-4">
-            <div className="label mb-2">{t.dept.toUpperCase()} — Trend (90d)</div>
-            <ChartFrame data={t.series} render={(common)=> (
-              <LineChart data={t.series}>{common}<Legend/><Line type="monotone" dataKey="value" dot={false}/></LineChart>
-            )} />
-          </div>
-        ))}
+      {/* Trend Charts */}
+      <section className="julius-grid grid-cols-1 lg:grid-cols-2 mb-8">
+        {loading ? (
+          <>
+            <JuliusSkeleton variant="chart" />
+            <JuliusSkeleton variant="chart" />
+          </>
+        ) : (
+          trends.map((t)=> (
+            <div key={t.dept} className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="julius-label">{t.dept.toUpperCase()} — מגמה (90 יום)</h3>
+                <button className="julius-btn text-xs">הצג תחזית</button>
+              </div>
+              <ChartFrame 
+                data={t.series} 
+                height={280}
+                render={(common)=> (
+                  <LineChart data={t.series}>
+                    {common}
+                    <Line 
+                      type="monotone" 
+                      dataKey="value" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                )} 
+              />
+            </div>
+          ))
+        )}
       </section>
 
-      <section className="grid md:grid-cols-2 gap-4 mt-6">
-        {tops.map((g)=> (
-          <div key={g.dept+"-"+g.dim} className="card p-4">
-            <div className="label mb-2">{g.dept.toUpperCase()} — Top by {g.dim}</div>
-            <ul className="space-y-1">
-              {(g.rows||[]).map((r:any,idx:number)=> (
-                <li key={idx} className="flex justify-between">
-                  <span>{r[g.dim] ?? "—"}</span>
-                  <span>{new Intl.NumberFormat().format(Number(r.value || r.count || r.amount_total || 0))}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      {/* Top Lists */}
+      <section className="julius-grid grid-cols-1 lg:grid-cols-2 mb-8">
+        {loading ? (
+          <>
+            <JuliusSkeleton variant="card" />
+            <JuliusSkeleton variant="card" />
+          </>
+        ) : (
+          tops.map((g)=> (
+            <div key={g.dept+"-"+g.dim} className="julius-card p-6">
+              <h3 className="julius-label mb-4">{g.dept.toUpperCase()} — מובילים לפי {g.dim}</h3>
+              <div className="space-y-3">
+                {(g.rows||[]).slice(0, 8).map((r:any,idx:number)=> (
+                  <div key={idx} className="flex justify-between items-center py-2 border-b border-border/30 last:border-0">
+                    <span className="text-sm text-foreground truncate flex-1">{r[g.dim] ?? "—"}</span>
+                    <span className="text-sm font-medium text-right ml-4">
+                      {new Intl.NumberFormat().format(Number(r.value || r.count || r.amount_total || 0))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
       </section>
 
       {/* Highlights & Actions */}
-      <section className="card p-4 mt-6">
-        <div className="label mb-2">Highlights & Actions</div>
-        {digest?.summary ? (
-          <div className="prose text-sm whitespace-pre-wrap mb-3">{digest.summary}</div>
-        ) : (
-          <div className="text-sm opacity-70 mb-3">No insights yet.</div>
-        )}
-        <div className="flex flex-wrap gap-2">
-          {digest?.actions?.map((a,i)=>(
-            <button key={i} className="btn btn-sm" onClick={()=>{
-              // TODO: wire compare/drill using your queryAggregate
-              console.log("Action:", a);
-            }}>
-              {a.label}
-            </button>
-          ))}
-        </div>
-      </section>
+      <InsightCard
+        title="תובנות והמלצות"
+        summary={digest?.summary || "אין תובנות זמינות כרגע. המערכת תכין תובנות לאחר צבירת מספיק נתונים."}
+        actions={digest?.actions?.map((a: any) => ({
+          label: a.label,
+          onClick: () => {
+            // TODO: wire compare/drill using your queryAggregate
+            console.log("Action:", a);
+          },
+          variant: "secondary" as const
+        })) || [
+          { label: "השווה שני לקוחות", onClick: () => console.log("Compare clients"), variant: "secondary" as const },
+          { label: "פירוק לפי סטטוס", onClick: () => console.log("Breakdown by status"), variant: "primary" as const }
+        ]}
+        className="mb-8"
+      />
 
       {/* Goals Progress */}
       {goals.length > 0 && (
-        <section className="grid md:grid-cols-3 gap-4 mt-6">
-          <div className="col-span-full">
-            <div className="label mb-2">Goals Progress</div>
+        <section className="julius-grid grid-cols-1 md:grid-cols-3">
+          <div className="col-span-full mb-6">
+            <h2 className="julius-label">התקדמות יעדים</h2>
           </div>
           {goals.map((g:any)=>(
-            <div key={g.goalId} className="card p-4">
-              <div className="flex justify-between mb-2">
-                <div className="label text-sm">{g.label}</div>
-                <div className={`text-xs ${g.onTrack ? "text-green-600" : "text-amber-600"}`}>
-                  {g.onTrack ? "On Track" : "At Risk"}
+            <div key={g.goalId} className="julius-card p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="julius-label flex-1">{g.label}</h3>
+                <div className={`text-xs px-2 py-1 rounded-full font-medium ${
+                  g.onTrack 
+                    ? "bg-success/10 text-success" 
+                    : "bg-warning/10 text-warning"
+                }`}>
+                  {g.onTrack ? "במסלול" : "בסיכון"}
                 </div>
               </div>
-              <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-2">
+              
+              <div className="w-full h-3 bg-muted rounded-full overflow-hidden mb-3">
                 <div 
-                  className={`h-2 ${g.onTrack ? "bg-emerald-500" : "bg-amber-500"}`} 
+                  className={`h-3 rounded-full transition-all duration-500 ${
+                    g.onTrack ? "bg-success" : "bg-warning"
+                  }`} 
                   style={{width:`${Math.min(100, Math.round((g.current/g.target)*100))}%`}}
                 ></div>
               </div>
-              <div className="text-xs">
-                {Intl.NumberFormat().format(g.current)} / {Intl.NumberFormat().format(g.target)} 
-                <span className="opacity-70"> • Forecast {Intl.NumberFormat().format(g.forecast)}</span>
+              
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">נוכחי:</span>
+                  <span className="font-medium">{Intl.NumberFormat().format(g.current)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">יעד:</span>
+                  <span className="font-medium">{Intl.NumberFormat().format(g.target)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">תחזית:</span>
+                  <span className="font-medium">{Intl.NumberFormat().format(g.forecast)}</span>
+                </div>
               </div>
             </div>
           ))}
         </section>
       )}
-
-      <div className="toolbar mt-6">
-        <button className="btn" onClick={load} disabled={loading}>{loading ? "Loading…" : "Refresh"}</button>
-      </div>
     </main>
   );
  }

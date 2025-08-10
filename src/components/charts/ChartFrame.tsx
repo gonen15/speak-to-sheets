@@ -5,26 +5,50 @@ export function MinimalTooltip({ active, payload, label }: any){
   if(!active || !payload?.length) return null;
   const p = payload[0];
   return (
-    <div className="card" style={{padding:8}}>
-      <div className="label" style={{marginBottom:4}}>{label}</div>
-      <div style={{fontSize:12}}><b>{p.name || p.dataKey}:</b> {new Intl.NumberFormat().format(Number(p.value||0))}</div>
+    <div className="julius-card p-3 text-sm">
+      <div className="julius-label mb-1">{label}</div>
+      <div className="font-medium">
+        <span className="text-muted-foreground">{p.name || p.dataKey}:</span>{" "}
+        <span className="text-foreground">{new Intl.NumberFormat().format(Number(p.value||0))}</span>
+      </div>
     </div>
   );
 }
 
-/** render-prop שמזריק צירים/גריד/טולטיפ אל תוך ה-Bar/LineChart */
-export default function ChartFrame({data, render}:{data:any[]; render:(common:React.ReactNode)=>React.ReactElement}){
+/** Julius-style chart frame with minimal design */
+export default function ChartFrame({
+  data, 
+  render,
+  height = 320,
+  className
+}: {
+  data: any[]; 
+  render: (common: React.ReactNode) => React.ReactElement;
+  height?: number;
+  className?: string;
+}) {
   const common = (
     <>
-      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-      <XAxis dataKey="name" tick={{ fontSize:12, fill:"#64748b" }} axisLine={false} tickLine={false}/>
-      <YAxis tick={{ fontSize:12, fill:"#64748b" }} axisLine={false} tickLine={false} width={48}/>
+      <CartesianGrid strokeDasharray="2 2" stroke="hsl(var(--border))" opacity={0.5} />
+      <XAxis 
+        dataKey="name" 
+        tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} 
+        axisLine={false} 
+        tickLine={false}
+      />
+      <YAxis 
+        tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} 
+        axisLine={false} 
+        tickLine={false} 
+        width={60}
+      />
       <Tooltip content={<MinimalTooltip/>}/>
     </>
   );
+  
   return (
-    <div className="card" style={{padding:12}}>
-      <div style={{height:320}}>
+    <div className={`julius-card p-4 ${className || ""}`}>
+      <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           {render(common)}
         </ResponsiveContainer>
