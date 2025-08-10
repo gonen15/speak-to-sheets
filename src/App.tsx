@@ -15,6 +15,7 @@ import DashboardDetail from "./pages/DashboardDetail";
 import Chat from "./pages/Chat";
 import Settings from "./pages/Settings";
 import SalesDashboard from "./pages/SalesDashboard";
+import PilotDashboard from "./pages/PilotDashboard";
 import { I18nProvider } from "./i18n/i18n";
 import { DataStoreProvider } from "./store/dataStore";
 
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/model" element={<Model />} />
                 <Route path="/dashboards" element={<Dashboards />} />
                 <Route path="/dashboards/sales" element={<SalesDashboard />} />
+                <Route path="/dashboards/pilot" element={<PilotDashboard />} />
                 <Route path="/dashboards/:id" element={<DashboardDetail />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/settings" element={<Settings />} />

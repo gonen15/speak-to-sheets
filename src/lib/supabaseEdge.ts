@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"; // משתמש ב-client הקיים שלך
 
-export type EdgeName = "model-save" | "model-get" | "query-aggregate";
+export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch";
 
 export interface CallEdgeOptions {
   body?: unknown;
