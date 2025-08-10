@@ -49,6 +49,29 @@ export type Database = {
           },
         ]
       }
+      dataset_rows: {
+        Row: {
+          dataset_id: string | null
+          row: Json
+        }
+        Insert: {
+          dataset_id?: string | null
+          row: Json
+        }
+        Update: {
+          dataset_id?: string | null
+          row?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_rows_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       datasets: {
         Row: {
           columns: Json
@@ -306,6 +329,39 @@ export type Database = {
           metrics?: Json
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      uploaded_datasets: {
+        Row: {
+          columns: string[]
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string
+          row_count: number | null
+          source_url: string | null
+          storage_path: string
+        }
+        Insert: {
+          columns: string[]
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name: string
+          row_count?: number | null
+          source_url?: string | null
+          storage_path: string
+        }
+        Update: {
+          columns?: string[]
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string
+          row_count?: number | null
+          source_url?: string | null
+          storage_path?: string
         }
         Relationships: []
       }
