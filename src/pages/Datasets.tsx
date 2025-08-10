@@ -22,6 +22,31 @@ const Datasets = () => {
 
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [pendingReplace, setPendingReplace] = React.useState<null | { id: string; text: string; name: string }>(null);
+  const [driveQueue, setDriveQueue] = React.useState<Array<{ text: string; name: string; sourceUrl?: string }>>([]);
+  const [driveStats, setDriveStats] = React.useState({ imported: 0, replaced: 0, skipped: 0 });
+
+  const processNextDrive = async () => {
+    if (pendingReplace || confirmOpen) return; // wait for decision
+    if (driveQueue.length === 0) {
+      const total = driveStats.imported + driveStats.replaced + driveStats.skipped;
+      if (total > 0) {
+        toast({ title: `Drive import finished`, description: `Imported ${driveStats.imported}, Replaced ${driveStats.replaced}, Skipped ${driveStats.skipped}` });
+      }
+      return;
+    }
+    const item = driveQueue[0];
+    const desiredName = normalizeFileName(item.name || "Drive CSV");
+    const existing = datasets.find((d) => d.name.toLowerCase() === desiredName.toLowerCase() || (!!item.sourceUrl && d.sourceUrl === item.sourceUrl));
+    if (existing) {
+      setPendingReplace({ id: existing.id, text: item.text, name: existing.name });
+      setConfirmOpen(true);
+      return;
+    }
+    importCsvText(desiredName, item.text, item.sourceUrl);
+    setDriveStats((s) => ({ ...s, imported: s.imported + 1 }));
+    setDriveQueue((q) => q.slice(1));
+    setTimeout(processNextDrive, 0);
+  };
 
   const onUploadCsv = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -52,10 +77,9 @@ const Datasets = () => {
         toast({ title: "לא נמצאו קבצי CSV/Sheets", description: "ודא שהתיקייה והקבצים משותפים כ-Anyone with the link – Viewer", variant: "destructive" as any });
         return;
       }
-      for (const f of files) {
-        importCsvText(f.name || "Drive CSV", f.csv, f.sourceUrl);
-      }
-      toast({ title: `Imported ${files.length} files`, description: "Drive folder import completed" });
+      setDriveStats({ imported: 0, replaced: 0, skipped: 0 });
+      setDriveQueue(files.map((f: any) => ({ text: f.csv as string, name: (f.name as string) || "Drive CSV", sourceUrl: f.sourceUrl as string | undefined })));
+      setTimeout(processNextDrive, 0);
     } catch (err: any) {
       toast({ title: "Import failed", description: String(err), variant: "destructive" as any });
     }
@@ -181,7 +205,15 @@ const Datasets = () => {
         cancelText="ביטול"
         onCancel={() => {
           setConfirmOpen(false);
-          setPendingReplace(null);
+          if (driveQueue.length) {
+            // Skip current queued item and continue
+            setDriveStats((s) => ({ ...s, skipped: s.skipped + 1 }));
+            setDriveQueue((q) => q.slice(1));
+            setPendingReplace(null);
+            setTimeout(processNextDrive, 0);
+          } else {
+            setPendingReplace(null);
+          }
         }}
         onConfirm={async () => {
           if (!pendingReplace) return;
@@ -189,8 +221,14 @@ const Datasets = () => {
             await replaceDataset(pendingReplace.id, pendingReplace.text);
             setConfirmOpen(false);
             setPendingReplace(null);
-            toast({ title: "הוחלף בהצלחה", description: pendingReplace.name });
-            navigate(`/datasets/${pendingReplace.id}`);
+            if (driveQueue.length) {
+              setDriveStats((s) => ({ ...s, replaced: s.replaced + 1 }));
+              setDriveQueue((q) => q.slice(1));
+              setTimeout(processNextDrive, 0);
+            } else {
+              toast({ title: "הוחלף בהצלחה", description: pendingReplace.name });
+              navigate(`/datasets/${pendingReplace.id}`);
+            }
           } catch (e: any) {
             toast({ title: "החלפה נכשלה", description: String(e), variant: "destructive" as any });
           }
