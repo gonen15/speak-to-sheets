@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Datasets = () => {
   const { t } = useI18n();
-  const { datasets, importCsvText } = useDataStore();
+  const { datasets, importCsvText, loadDemo } = useDataStore();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -95,6 +95,24 @@ const Datasets = () => {
               </div>
               <Button type="submit">Sync Monday CRM</Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Sample dataset</CardTitle>
+            <CardDescription>Load a ready-made demo CSV to explore the app.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              onClick={() => {
+                loadDemo();
+                toast({ title: "Sample dataset added", description: "Demo Ice Cream dataset was loaded" });
+              }}
+            >
+              טען נתוני דוגמה
+            </Button>
           </CardContent>
         </Card>
       </div>
