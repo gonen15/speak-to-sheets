@@ -13,10 +13,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.sheet-fetch]
-verify_jwt = false
+verify_jwt = true
 
 [functions.drive-import]
-verify_jwt = false
+verify_jwt = true
 
 [functions.dataset-index]
 verify_jwt = true

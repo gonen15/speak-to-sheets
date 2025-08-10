@@ -69,16 +69,16 @@ async function listBoards(boardIds?: number[]): Promise<Array<{ id: number; name
   return (data.boards || []).map(b => ({ id: b.id, name: b.name, state: b.state, workspace: b.workspace?.name }));
 }
 
-async function upsertBoards(boards: Array<{ id: number; name: string; state?: string; workspace?: string }>) {
+async function upsertBoards(boards: Array<{ id: number; name: string; state?: string; workspace?: string }>, userId: string) {
   if (!boards.length) return;
   const { error } = await supabaseAdmin.from("monday_boards").upsert(
-    boards.map(b => ({ id: b.id, name: b.name, state: b.state ?? null, workspace: b.workspace ?? null })),
+    boards.map(b => ({ id: b.id, name: b.name, state: b.state ?? null, workspace: b.workspace ?? null, created_by: userId })),
     { onConflict: "id" }
   );
   if (error) throw error;
 }
 
-async function fetchAndUpsertItems(boardId: number): Promise<number> {
+async function fetchAndUpsertItems(boardId: number, userId: string): Promise<number> {
   let cursor: string | null | undefined = null;
   let count = 0;
   const q = /* GraphQL */ `
@@ -117,6 +117,7 @@ async function fetchAndUpsertItems(boardId: number): Promise<number> {
         monday_created_at: it.created_at ? new Date(it.created_at).toISOString() : null,
         monday_updated_at: it.updated_at ? new Date(it.updated_at).toISOString() : null,
         column_values: it.column_values ?? null,
+        created_by: userId,
       }));
       const { error } = await supabaseAdmin.from("monday_items").upsert(upserts, { onConflict: "id" });
       if (error) throw error;
@@ -140,18 +141,25 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: false, error: "Missing required secrets" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    const authHeader = req.headers.get("Authorization")?.replace("Bearer ", "");
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(authHeader || "");
+    if (userErr || !userData?.user?.id) {
+      await log("error", "Unauthorized or invalid JWT");
+      return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const userId = userData.user.id;
+
     const payload = (await req.json().catch(() => ({}))) as InvokePayload;
-    await log("started", "Manual sync invoked", { payload });
+    await log("started", "Manual sync invoked", { payload, userId });
 
     const boards = await listBoards(payload.boardIds);
-    await upsertBoards(boards);
+    await upsertBoards(boards, userId);
 
     let totalItems = 0;
     for (const b of boards) {
-      const c = await fetchAndUpsertItems(b.id);
+      const c = await fetchAndUpsertItems(b.id, userId);
       totalItems += c;
     }
-
     await log("completed", "Sync finished", { boards: boards.length, items: totalItems });
 
     return new Response(JSON.stringify({ ok: true, boards: boards.length, items: totalItems }), {
