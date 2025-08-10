@@ -48,6 +48,19 @@ const Datasets = () => {
     setTimeout(processNextDrive, 0);
   };
 
+  const upsertCsv = async (name: string, csv: string, sourceUrl?: string) => {
+    // For now, use simple deduplication logic until RPC types are updated
+    const existing = datasets.find((d) => d.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      const yes = window.confirm(`כבר קיים קובץ בשם "${name}". להחליף את התוכן?`);
+      if (!yes) return { id: existing.id, action: "exists" };
+      await replaceDataset(existing.id, csv);
+      return { id: existing.id, action: "replaced" };
+    }
+    const id = importCsvText(name, csv, sourceUrl);
+    return { id, action: "created" };
+  };
+
   const onUploadCsv = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget as HTMLFormElement & { file: { files: FileList }; name?: { value: string } };
@@ -55,15 +68,16 @@ const Datasets = () => {
     if (!file) return;
     const desiredName = normalizeFileName((form.name?.value || file.name || "").trim());
     const text = await file.text();
-    const existing = datasets.find((d) => d.name.toLowerCase() === desiredName.toLowerCase());
-    if (existing) {
-      setPendingReplace({ id: existing.id, text, name: existing.name });
-      setConfirmOpen(true);
-      return;
+    try {
+      const res = await upsertCsv(desiredName || file.name, text);
+      toast({ 
+        title: res.action === "replaced" ? "הוחלף בהצלחה" : "הועלה בהצלחה", 
+        description: desiredName 
+      });
+      navigate(`/datasets/${res.id}`);
+    } catch (err: any) {
+      toast({ title: "העלאה נכשלה", description: String(err), variant: "destructive" as any });
     }
-    const id = importCsvText(desiredName || file.name, text, null);
-    toast({ title: "הועלה בהצלחה", description: desiredName });
-    navigate(`/datasets/${id}`);
   };
   const onImportDrive = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

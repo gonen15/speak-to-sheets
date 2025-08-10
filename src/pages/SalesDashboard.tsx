@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import PageMeta from "@/components/common/PageMeta";
-import { queryAggregate, saveSemanticModel } from "@/lib/supabaseEdge";
+import { aggregateRun, saveSemanticModel } from "@/lib/supabaseEdge";
 import KPI from "@/components/ui/KPI";
 import PillFilters from "@/components/ui/PillFilters";
 import Section from "@/components/ui/Section";
@@ -51,10 +51,22 @@ export default function SalesDashboard(){
     try{
       const bid=Number(boardId);
       const {from,to}=quarterRange();
-      const range = period==="this_q" ? {from,to} : {from:"2025-01-01",to};
-      const k = await queryAggregate({ boardId:bid, metrics:["amount_total","items","win_rate"], dateRange:range });
+      const range = period==="this_q" ? {field:"date",from,to} : {field:"date",from:"2025-01-01",to};
+      const k = await aggregateRun({
+        source: "monday",
+        refId: String(bid),
+        metrics: ["amount_total","items","win_rate"],
+        dateRange: range
+      });
       const row = Array.isArray(k?.rows)?k.rows[0]:null; setKpi(row);
-      const byStatus = await queryAggregate({ boardId:bid, metrics:["amount_total"], dimensions:["status"], dateRange:range, limit:1000 });
+      const byStatus = await aggregateRun({
+        source: "monday",
+        refId: String(bid),
+        metrics: ["amount_total"],
+        dimensions: ["status"],
+        dateRange: range,
+        limit: 1000
+      });
       setSeries((byStatus?.rows??[]).map((r:any)=>({ name:r.status||"Unknown", value:Number(r.amount_total||0) })));
     }catch(e:any){ alert(e?.message||"Load failed"); }
     finally{ setLoading(false); }
