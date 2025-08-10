@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://vdsryddwzhcnoksamkep.supabase.co";
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+// Supabase client is created per-request to forward the caller's Authorization header
 
 type Metric = { key: string; label: string; sql: string; format?: "number"|"currency"|"percent" };
 
@@ -28,6 +28,13 @@ Deno.serve(async (req) => {
     if (req.method !== "POST") {
       return new Response(JSON.stringify({ error: "Use POST" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false }, global: { headers: { Authorization: authHeader } } });
+
     const body = (await req.json()) as SaveBody;
     if (!body?.boardId || !body?.name) {
       return new Response(JSON.stringify({ error: "boardId and name are required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
