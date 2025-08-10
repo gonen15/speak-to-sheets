@@ -158,6 +158,7 @@ export type Database = {
       monday_boards: {
         Row: {
           created_at: string
+          created_by: string | null
           id: number
           name: string | null
           state: string | null
@@ -166,6 +167,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id: number
           name?: string | null
           state?: string | null
@@ -174,6 +176,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: number
           name?: string | null
           state?: string | null
@@ -187,6 +190,7 @@ export type Database = {
           asset_id: number
           board_id: number | null
           created_at: string
+          created_by: string | null
           file_size: number | null
           file_type: string | null
           item_id: number
@@ -200,6 +204,7 @@ export type Database = {
           asset_id: number
           board_id?: number | null
           created_at?: string
+          created_by?: string | null
           file_size?: number | null
           file_type?: string | null
           item_id: number
@@ -213,6 +218,7 @@ export type Database = {
           asset_id?: number
           board_id?: number | null
           created_at?: string
+          created_by?: string | null
           file_size?: number | null
           file_type?: string | null
           item_id?: number
@@ -244,6 +250,7 @@ export type Database = {
           board_id: number
           column_values: Json | null
           created_at: string
+          created_by: string | null
           group_id: string | null
           id: number
           monday_created_at: string | null
@@ -255,6 +262,7 @@ export type Database = {
           board_id: number
           column_values?: Json | null
           created_at?: string
+          created_by?: string | null
           group_id?: string | null
           id: number
           monday_created_at?: string | null
@@ -266,6 +274,7 @@ export type Database = {
           board_id?: number
           column_values?: Json | null
           created_at?: string
+          created_by?: string | null
           group_id?: string | null
           id?: number
           monday_created_at?: string | null
