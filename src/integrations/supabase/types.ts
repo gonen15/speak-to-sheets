@@ -197,6 +197,7 @@ export type Database = {
         Row: {
           board_id: number
           created_at: string
+          created_by: string | null
           date_column: string | null
           dimensions: Json
           glossary: Json
@@ -208,6 +209,7 @@ export type Database = {
         Insert: {
           board_id: number
           created_at?: string
+          created_by?: string | null
           date_column?: string | null
           dimensions?: Json
           glossary?: Json
@@ -219,6 +221,7 @@ export type Database = {
         Update: {
           board_id?: number
           created_at?: string
+          created_by?: string | null
           date_column?: string | null
           dimensions?: Json
           glossary?: Json
