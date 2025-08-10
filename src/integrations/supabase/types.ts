@@ -256,6 +256,101 @@ export type Database = {
         }
         Relationships: []
       }
+      exec_goal_snapshots: {
+        Row: {
+          computed_at: string | null
+          current_value: number
+          forecast: number | null
+          goal_id: string | null
+          id: string
+          on_track: boolean | null
+          period_end: string
+          period_start: string
+          target: number
+        }
+        Insert: {
+          computed_at?: string | null
+          current_value?: number
+          forecast?: number | null
+          goal_id?: string | null
+          id?: string
+          on_track?: boolean | null
+          period_end: string
+          period_start: string
+          target: number
+        }
+        Update: {
+          computed_at?: string | null
+          current_value?: number
+          forecast?: number | null
+          goal_id?: string | null
+          id?: string
+          on_track?: boolean | null
+          period_end?: string
+          period_start?: string
+          target?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exec_goal_snapshots_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "exec_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exec_goals: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date_field: string | null
+          department: string
+          end_date: string | null
+          id: string
+          label: string
+          metric_key: string
+          notify: boolean | null
+          period: string
+          ref_id: string
+          source: string
+          start_date: string | null
+          target: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          date_field?: string | null
+          department: string
+          end_date?: string | null
+          id?: string
+          label: string
+          metric_key: string
+          notify?: boolean | null
+          period: string
+          ref_id: string
+          source: string
+          start_date?: string | null
+          target: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          date_field?: string | null
+          department?: string
+          end_date?: string | null
+          id?: string
+          label?: string
+          metric_key?: string
+          notify?: boolean | null
+          period?: string
+          ref_id?: string
+          source?: string
+          start_date?: string | null
+          target?: number
+        }
+        Relationships: []
+      }
       monday_boards: {
         Row: {
           created_at: string
