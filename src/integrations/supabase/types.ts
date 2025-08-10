@@ -44,30 +44,42 @@ export type Database = {
       monday_files: {
         Row: {
           asset_id: number
+          board_id: number | null
           created_at: string
+          file_size: number | null
           file_type: string | null
           item_id: number
+          mime_type: string | null
           name: string | null
           public_url: string | null
           updated_at: string
+          uploaded_at: string | null
         }
         Insert: {
           asset_id: number
+          board_id?: number | null
           created_at?: string
+          file_size?: number | null
           file_type?: string | null
           item_id: number
+          mime_type?: string | null
           name?: string | null
           public_url?: string | null
           updated_at?: string
+          uploaded_at?: string | null
         }
         Update: {
           asset_id?: number
+          board_id?: number | null
           created_at?: string
+          file_size?: number | null
           file_type?: string | null
           item_id?: number
+          mime_type?: string | null
           name?: string | null
           public_url?: string | null
           updated_at?: string
+          uploaded_at?: string | null
         }
         Relationships: [
           {
@@ -125,25 +137,52 @@ export type Database = {
       }
       monday_sync_logs: {
         Row: {
+          board_ids: number[] | null
           created_at: string
+          errors: Json | null
+          finished_at: string | null
           id: string
+          inserted_rows: number | null
           message: string | null
           meta: Json | null
+          started_at: string | null
           status: string
+          type: string | null
+          unchanged_rows: number | null
+          updated_at: string
+          updated_rows: number | null
         }
         Insert: {
+          board_ids?: number[] | null
           created_at?: string
+          errors?: Json | null
+          finished_at?: string | null
           id?: string
+          inserted_rows?: number | null
           message?: string | null
           meta?: Json | null
+          started_at?: string | null
           status: string
+          type?: string | null
+          unchanged_rows?: number | null
+          updated_at?: string
+          updated_rows?: number | null
         }
         Update: {
+          board_ids?: number[] | null
           created_at?: string
+          errors?: Json | null
+          finished_at?: string | null
           id?: string
+          inserted_rows?: number | null
           message?: string | null
           meta?: Json | null
+          started_at?: string | null
           status?: string
+          type?: string | null
+          unchanged_rows?: number | null
+          updated_at?: string
+          updated_rows?: number | null
         }
         Relationships: []
       }
