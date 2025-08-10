@@ -4,10 +4,13 @@ project_id = "vdsryddwzhcnoksamkep"
 verify_jwt = true
 
 [functions.model-save]
-verify_jwt = false
+verify_jwt = true
 
 [functions.model-get]
-verify_jwt = false
+verify_jwt = true
 
 [functions.query-aggregate]
+verify_jwt = true
+
+[functions.sheet-fetch]
 verify_jwt = false
