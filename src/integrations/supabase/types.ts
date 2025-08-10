@@ -89,6 +89,13 @@ export type Database = {
             referencedRelation: "monday_items"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "monday_files_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "monday_items_flat"
+            referencedColumns: ["item_id"]
+          },
         ]
       }
       monday_items: {
@@ -186,12 +193,126 @@ export type Database = {
         }
         Relationships: []
       }
+      semantic_models: {
+        Row: {
+          board_id: number
+          created_at: string
+          date_column: string | null
+          dimensions: Json
+          glossary: Json
+          id: string
+          metrics: Json
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          board_id: number
+          created_at?: string
+          date_column?: string | null
+          dimensions?: Json
+          glossary?: Json
+          id?: string
+          metrics?: Json
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          board_id?: number
+          created_at?: string
+          date_column?: string | null
+          dimensions?: Json
+          glossary?: Json
+          id?: string
+          metrics?: Json
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      monday_items_flat: {
+        Row: {
+          amount: number | null
+          board_id: number | null
+          brand: string | null
+          client: string | null
+          country: string | null
+          created_at: string | null
+          date: string | null
+          date_to: string | null
+          item_id: number | null
+          item_name: string | null
+          owner: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: never
+          board_id?: number | null
+          brand?: never
+          client?: never
+          country?: never
+          created_at?: string | null
+          date?: never
+          date_to?: never
+          item_id?: number | null
+          item_name?: string | null
+          owner?: never
+          status?: never
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: never
+          board_id?: number | null
+          brand?: never
+          client?: never
+          country?: never
+          created_at?: string | null
+          date?: never
+          date_to?: never
+          item_id?: number | null
+          item_name?: string | null
+          owner?: never
+          status?: never
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monday_items_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "monday_boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      aggregate_items: {
+        Args: {
+          p_board_id: number
+          p_metrics: string[]
+          p_dimensions: string[]
+          p_filters?: Json
+          p_date_from?: string
+          p_date_to?: string
+          p_date_field?: string
+          p_limit?: number
+        }
+        Returns: {
+          rows: Json[]
+          sql: string
+        }[]
+      }
+      monday_cv_text: {
+        Args: { colvals: Json; col_id: string }
+        Returns: string
+      }
+      monday_cv_value: {
+        Args: { colvals: Json; col_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
