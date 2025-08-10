@@ -32,6 +32,7 @@ async function listFolderFiles(apiKey: string, folderId: string) {
     url.searchParams.set("pageSize", "1000");
     url.searchParams.set("supportsAllDrives", "true");
     url.searchParams.set("includeItemsFromAllDrives", "true");
+    url.searchParams.set("corpora", "allDrives");
     if (pageToken) url.searchParams.set("pageToken", pageToken);
 
     const res = await fetch(url.toString());

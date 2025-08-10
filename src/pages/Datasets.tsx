@@ -39,6 +39,10 @@ const Datasets = () => {
     if (!folderUrl) return;
     const res = await driveImport({ folderUrl });
     const files = (res.files || []).filter((f: any) => f.csv && !f.error);
+    if (files.length === 0) {
+      toast({ title: "לא נמצאו קבצי CSV/Sheets", description: "ודא שהתיקייה והקבצים משותפים כ-Anyone with the link – Viewer", variant: "destructive" as any });
+      return;
+    }
     for (const f of files) {
       importCsvText(f.name || "Drive CSV", f.csv, f.sourceUrl);
     }
