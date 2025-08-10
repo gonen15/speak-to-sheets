@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -126,7 +126,7 @@ const Datasets = () => {
                 <div className="font-medium">{d.name}</div>
                 <div className="text-sm text-muted-foreground">{d.rows.length} rows</div>
               </div>
-              <Button asChild variant="outline"><a href={`/datasets/${d.id}`}>Open</a></Button>
+              <Button asChild variant="outline"><Link to={`/datasets/${d.id}`}>Open</Link></Button>
             </li>
           ))}
         </ul>
