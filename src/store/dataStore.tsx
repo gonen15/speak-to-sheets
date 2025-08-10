@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import Papa from "papaparse";
+import { supabase } from "@/integrations/supabase/client";
 
 export type Row = Record<string, any>;
 
@@ -41,6 +42,7 @@ interface DataStoreContextType {
   getDataset: (id: string) => Dataset | undefined;
   saveModel: (model: SemanticModel) => void;
   aggregate: (params: { datasetId: string; metricName: string; dimension?: string }) => { key: string; value: number }[];
+  syncDataset: (id: string) => Promise<void>;
 }
 
 const DataStoreContext = createContext<DataStoreContextType | null>(null);
@@ -87,12 +89,110 @@ export const DataStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [semanticModels, setSemanticModels] = useState<Record<string, SemanticModel>>({});
 
+  // Load persisted datasets and models from Supabase on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: dsRows, error } = await supabase
+          .from("datasets")
+          .select("id, name, source_type, source_url, columns, row_count, last_sync_at, status, created_at")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        const loaded: Dataset[] = [];
+        for (const row of dsRows || []) {
+          let csvText = "";
+          const { data: blob } = await supabase.storage.from("datasets").download(`${row.id}.csv`);
+          if (blob) {
+            csvText = await blob.text();
+          }
+          const parsed = csvText ? parseCsv(csvText) : { rows: [], columns: (row.columns as string[]) ?? [] };
+          loaded.push({
+            id: row.id as string,
+            name: row.name as string,
+            sourceType: "csv",
+            sourceUrl: (row.source_url as string) || undefined,
+            columns: parsed.columns,
+            rows: parsed.rows,
+            lastSyncAt: row.last_sync_at ? new Date(row.last_sync_at as string).toISOString() : undefined,
+            status: (row.status as any) || "ready",
+          });
+        }
+        setDatasets(loaded);
+
+        const { data: modelRows } = await supabase
+          .from("dataset_models")
+          .select("dataset_id, model");
+        const modelMap: Record<string, SemanticModel> = {};
+        for (const ds of loaded) {
+          const m = (modelRows || []).find((r: any) => r.dataset_id === ds.id)?.model as any;
+          if (m) {
+            modelMap[ds.id] = {
+              datasetId: ds.id,
+              dateColumn: m.dateColumn,
+              dimensions: m.dimensions || [],
+              metrics: m.metrics || [],
+            };
+          } else {
+            modelMap[ds.id] = defaultModel(ds.id, ds.columns);
+          }
+        }
+        setSemanticModels(modelMap);
+      } catch (e) {
+        console.error("Failed to load persisted datasets:", e);
+      }
+    })();
+  }, []);
+
+  async function persistDatasetAndModel(ds: Dataset, model: SemanticModel, csvText: string) {
+    try {
+      // Upload CSV
+      await supabase.storage
+        .from("datasets")
+        .upload(`${ds.id}.csv`, new Blob([csvText], { type: "text/csv" }), { upsert: true });
+      // Upsert dataset metadata
+      await supabase.from("datasets").upsert({
+        id: ds.id,
+        name: ds.name,
+        source_type: ds.sourceType,
+        source_url: ds.sourceUrl ?? null,
+        columns: ds.columns,
+        row_count: ds.rows.length,
+        last_sync_at: ds.lastSyncAt ?? null,
+        status: ds.status ?? "ready",
+      });
+      // Upsert model
+      await supabase.from("dataset_models").upsert({
+        dataset_id: ds.id,
+        model: {
+          dateColumn: model.dateColumn,
+          dimensions: model.dimensions,
+          metrics: model.metrics,
+        },
+      });
+    } catch (e) {
+      console.error("Failed to persist dataset:", e);
+    }
+  }
+
   const importCsvText = (name: string, csvText: string, sourceUrl?: string) => {
     const { rows, columns } = parseCsv(csvText);
     const id = genId("ds");
-    const ds: Dataset = { id, name, sourceType: "csv", sourceUrl, columns, rows, status: "ready", lastSyncAt: new Date().toISOString() };
+    const ds: Dataset = {
+      id,
+      name,
+      sourceType: "csv",
+      sourceUrl,
+      columns,
+      rows,
+      status: "ready",
+      lastSyncAt: new Date().toISOString(),
+    };
     setDatasets((prev) => [ds, ...prev]);
-    setSemanticModels((prev) => ({ ...prev, [id]: defaultModel(id, columns) }));
+    const model = defaultModel(id, columns);
+    setSemanticModels((prev) => ({ ...prev, [id]: model }));
+
+    // Persist in background
+    void persistDatasetAndModel(ds, model, csvText);
     return id;
   };
 
@@ -105,6 +205,15 @@ export const DataStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const saveModel = (model: SemanticModel) => {
     setSemanticModels((prev) => ({ ...prev, [model.datasetId]: model }));
+    // Persist model only
+    void supabase.from("dataset_models").upsert({
+      dataset_id: model.datasetId,
+      model: {
+        dateColumn: model.dateColumn,
+        dimensions: model.dimensions,
+        metrics: model.metrics,
+      },
+    });
   };
 
   function safeEvalExpression(expr: string): number {
@@ -160,8 +269,46 @@ export const DataStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return result.sort((a, b) => a.key.localeCompare(b.key));
   };
 
+  const syncDataset: DataStoreContextType["syncDataset"] = async (id) => {
+    const ds = getDataset(id);
+    if (!ds || !ds.sourceUrl) return;
+    try {
+      // Optimistic state update
+      setDatasets((prev) => prev.map((d) => (d.id === id ? { ...d, status: "syncing" } : d)));
+
+      const sheetMatch = ds.sourceUrl.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/i);
+      const gidMatch = ds.sourceUrl.match(/[?&]gid=(\d+)/);
+      if (!sheetMatch || !gidMatch) {
+        throw new Error("Only Google Sheets URLs with gid are supported for sync");
+      }
+      const sheetId = sheetMatch[1];
+      const gid = gidMatch[1];
+      const { data, error } = await supabase.functions.invoke<{ ok: boolean; csv?: string; error?: string }>("sheet-fetch", {
+        body: { sheetId, gid },
+      });
+      if (error || !data?.ok || !data.csv) throw new Error(data?.error || error?.message || "fetch failed");
+
+      const csvText = data.csv;
+      const { rows, columns } = parseCsv(csvText);
+      const updated: Dataset = {
+        ...ds,
+        columns,
+        rows,
+        lastSyncAt: new Date().toISOString(),
+        status: "ready",
+      };
+      setDatasets((prev) => prev.map((d) => (d.id === id ? updated : d)));
+
+      const model = semanticModels[id] ?? defaultModel(id, columns);
+      await persistDatasetAndModel(updated, model, csvText);
+    } catch (e) {
+      console.error("Sync failed:", e);
+      setDatasets((prev) => prev.map((d) => (d.id === id ? { ...d, status: "error" } : d)));
+    }
+  };
+
   const value = useMemo<DataStoreContextType>(
-    () => ({ datasets, dashboards, semanticModels, loadDemo, importCsvText, getDataset, saveModel, aggregate }),
+    () => ({ datasets, dashboards, semanticModels, loadDemo, importCsvText, getDataset, saveModel, aggregate, syncDataset }),
     [datasets, dashboards, semanticModels]
   );
 

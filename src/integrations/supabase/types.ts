@@ -14,6 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      dataset_models: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          dataset_id: string
+          id: string
+          model: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          dataset_id: string
+          id?: string
+          model?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          dataset_id?: string
+          id?: string
+          model?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_models_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: true
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      datasets: {
+        Row: {
+          columns: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          last_sync_at: string | null
+          name: string
+          row_count: number
+          source_type: string
+          source_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          columns?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_sync_at?: string | null
+          name: string
+          row_count?: number
+          source_type?: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          columns?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_sync_at?: string | null
+          name?: string
+          row_count?: number
+          source_type?: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       monday_boards: {
         Row: {
           created_at: string
