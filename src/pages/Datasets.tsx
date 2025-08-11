@@ -184,6 +184,39 @@ const Datasets = () => {
     }
   };
 
+  // Google Sheet single import
+  const parseSheetFromUrl = (url: string): { sheetId: string; gid: string } | null => {
+    const sheetMatch = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (!sheetMatch) return null;
+    const gidMatch = url.match(/[?&]gid=(\d+)/);
+    return { sheetId: sheetMatch[1], gid: gidMatch ? gidMatch[1] : "0" };
+  };
+
+  const onImportGoogleSheet = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (pilotBusy) return;
+    setPilotBusy(true);
+    try {
+      const info = parseSheetFromUrl(pilotUrl.trim());
+      if (!info) throw new Error("כתובת לא תקינה");
+      const { data, error } = await supabase.functions.invoke<{ ok: boolean; csv?: string; error?: string }>("sheet-fetch", {
+        body: info,
+      });
+      if (error || !data?.ok || !data.csv) throw new Error(data?.error || error?.message || "שגיאת ייבוא");
+
+      const desiredName = normalizeFileName("דוח פיילוט");
+      const res = await upsertCsv(desiredName, data.csv, pilotUrl.trim());
+      if (res?.id) {
+        toast({ title: "הייבוא הושלם", description: res.action === "replaced" ? "הוחלף" : "נוצר" });
+        navigate(`/datasets/${res.id}?tab=view`);
+      }
+    } catch (err: any) {
+      toast({ title: "ייבוא נכשל", description: String(err?.message || err), variant: "destructive" as any });
+    } finally {
+      setPilotBusy(false);
+    }
+  };
+
   const handleSaveFolder = async (folderUrl: string, folderName: string) => {
     try {
       const folderId = folderUrl.match(/folders\/([a-zA-Z0-9_-]+)/)?.[1];
@@ -255,6 +288,22 @@ const Datasets = () => {
       />
 
       <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Google Sheet (URL)</CardTitle>
+            <CardDescription>הדבק קישור של Google Sheets לייבוא הטאב הראשון</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-3" onSubmit={onImportGoogleSheet}>
+              <div className="space-y-2">
+                <Label htmlFor="gsheet">Google Sheet URL</Label>
+                <Input id="gsheet" value={pilotUrl} onChange={(e)=>setPilotUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." />
+              </div>
+              <Button type="submit" disabled={pilotBusy}>{pilotBusy ? "מייבא..." : "ייבוא"}</Button>
+            </form>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Upload CSV</CardTitle>
