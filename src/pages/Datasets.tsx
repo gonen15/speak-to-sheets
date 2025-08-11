@@ -236,17 +236,17 @@ const Datasets = () => {
 
   return (
     <main className="container mx-auto py-10">
-      <PageMeta title="CGC DataHub — Datasets" description="Import from Google Drive and sync CRM systems" path="/datasets" />
-      <h1 className="text-2xl font-semibold mb-6">{t("datasets")}</h1>
+      <PageMeta title="דאטהסטים — העלאה וייבוא" description="העלאת CSV וייבוא מתיקיית Google Drive בצורה פשוטה" path="/datasets" />
+      <h1 className="text-2xl font-semibold mb-6">דאטהסטים</h1>
 
 
       <UploadProgress 
         onJobComplete={(job) => {
           if (job.dataset_id) {
-            navigate(`/dashboards/dataset/${job.dataset_id}`);
+            navigate(`/datasets/${job.dataset_id}?tab=view`);
           }
         }}
-        onNavigateToDataset={(datasetId) => navigate(`/dashboards/dataset/${datasetId}`)}
+        onNavigateToDataset={(datasetId) => navigate(`/datasets/${datasetId}?tab=view`)}
       />
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -296,41 +296,6 @@ const Datasets = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>CRM (Monday.com)</CardTitle>
-            <CardDescription>Sync boards into the analytics tables. Optionally specify board IDs.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-3" onSubmit={onSyncMonday}>
-              <div className="space-y-2">
-                <Label htmlFor="boardIds">Board IDs (optional)</Label>
-                <Input id="boardIds" name="boardIds" placeholder="12345, 67890" />
-              </div>
-              <Button type="submit" disabled={syncingMonday}>
-                {syncingMonday ? "מסנכרן..." : "Sync Monday CRM"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Sample dataset</CardTitle>
-            <CardDescription>Load a ready-made demo CSV to explore the app.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              type="button"
-              onClick={() => {
-                loadDemo();
-                toast({ title: "Sample dataset added", description: "Demo Ice Cream dataset was loaded" });
-              }}
-            >
-              טען נתוני דוגמה
-            </Button>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="mt-10">

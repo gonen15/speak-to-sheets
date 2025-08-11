@@ -37,17 +37,8 @@ const AppHeader = () => {
           <NavLink to="/model" className={linkClass}>
             {t("model")}
           </NavLink>
-          <NavLink to="/dashboards" className={linkClass}>
-            {t("dashboards")}
-          </NavLink>
-          <NavLink to="/dashboards/sales" className={linkClass}>
-            מכירות
-          </NavLink>
-          <NavLink to="/dashboards/departments" className={linkClass}>
-            מחלקות
-          </NavLink>
-          <NavLink to="/dashboards/builder" className={linkClass}>
-            Builder
+          <NavLink to="/dashboards/master" className={linkClass}>
+            Master
           </NavLink>
           <NavLink to="/chat" className={linkClass}>
             {t("chat")}

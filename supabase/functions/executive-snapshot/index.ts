@@ -33,15 +33,27 @@ Deno.serve(async (req) => {
   });
 
   try {
-    // Try catalog first; if missing/empty, fallback to a simple guess later
+    // Build catalog from user's uploaded datasets (avoids missing data_catalog columns)
     let cats: Cat[] = [];
     {
       const { data, error } = await supabase
-        .from("data_catalog")
-        .select("id, source, ref_id, name, department, date_field, dimensions, metrics, score")
-        .order("score", { ascending: false })
+        .from("uploaded_datasets")
+        .select("id, name")
+        .order("created_at", { ascending: false })
         .limit(12);
-      if (!error && Array.isArray(data)) cats = data as Cat[];
+      if (!error && Array.isArray(data)) {
+        cats = (data as any[]).map((d) => ({
+          id: d.id,
+          source: "dataset",
+          ref_id: d.id,
+          name: d.name || "Dataset",
+          department: "sales",
+          date_field: "date",
+          dimensions: ["customer", "status", "department"],
+          metrics: [{ key: "amount_total", sql: "sum(amount)" }, { key: "count", sql: "count(*)" }],
+          score: 1,
+        }));
+      }
     }
 
     const perDept: Record<string, Cat[]> = {};
