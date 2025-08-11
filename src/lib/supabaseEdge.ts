@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"; // משתמש ב-client הקיים שלך
 
-export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard" | "dataset-replace" | "ai-chat" | "executive-snapshot" | "filters-save" | "filters-get" | "aggregate-run" | "goals-save" | "goals-snapshot" | "insights-digest";
+export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard" | "dataset-replace" | "ai-chat" | "executive-snapshot" | "filters-save" | "filters-get" | "aggregate-run" | "goals-save" | "goals-snapshot" | "insights-digest" | "library-save" | "library-delete" | "drive-sync";
 
 export interface CallEdgeOptions {
   body?: unknown;
@@ -162,4 +162,27 @@ export function goalsSnapshot(){
 
 export function insightsDigest(){
   return callEdge<{ok:boolean; summary:string; actions:Array<{kind:string;label:string;payload:any}>}>("insights-digest",{ body:{} });
+}
+
+export function librarySave(payload: {
+  kind: "drive_folder" | "csv_url" | "upload";
+  name: string;
+  config: any;
+  syncEnabled?: boolean;
+  syncIntervalMins?: number;
+}) {
+  return callEdge<{ ok: boolean; sourceId: string }>("library-save", { body: payload });
+}
+
+export function libraryDelete(payload: {
+  sourceId: string;
+  deleteDatasets?: boolean;
+}) {
+  return callEdge<{ ok: boolean }>("library-delete", { body: payload });
+}
+
+export function driveSync(payload: {
+  sourceId: string;
+}) {
+  return callEdge<{ ok: boolean; imported: number; updated: number; skipped: number; total: number }>("drive-sync", { body: payload });
 }

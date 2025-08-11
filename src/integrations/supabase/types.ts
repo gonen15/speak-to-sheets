@@ -115,6 +115,75 @@ export type Database = {
         }
         Relationships: []
       }
+      data_source_datasets: {
+        Row: {
+          dataset_id: string
+          source_id: string
+        }
+        Insert: {
+          dataset_id: string
+          source_id: string
+        }
+        Update: {
+          dataset_id?: string
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_source_datasets_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_datasets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_source_datasets_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_sources: {
+        Row: {
+          config: Json
+          created_at: string | null
+          created_by: string
+          id: string
+          is_saved: boolean
+          kind: string
+          last_synced_at: string | null
+          name: string
+          sync_enabled: boolean
+          sync_interval_mins: number
+        }
+        Insert: {
+          config: Json
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          is_saved?: boolean
+          kind: string
+          last_synced_at?: string | null
+          name: string
+          sync_enabled?: boolean
+          sync_interval_mins?: number
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          is_saved?: boolean
+          kind?: string
+          last_synced_at?: string | null
+          name?: string
+          sync_enabled?: boolean
+          sync_interval_mins?: number
+        }
+        Relationships: []
+      }
       dataset_insights: {
         Row: {
           created_at: string | null

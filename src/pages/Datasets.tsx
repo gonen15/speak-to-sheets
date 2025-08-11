@@ -12,7 +12,7 @@ import { useDataStore } from "@/store/dataStore";
 import { driveImport } from "@/lib/supabaseEdge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { datasetReplace } from "@/lib/supabaseEdge";
+import { datasetReplace, librarySave, libraryDelete, driveSync } from "@/lib/supabaseEdge";
 
 const Datasets = () => {
   const { t } = useI18n();
@@ -24,6 +24,7 @@ const Datasets = () => {
   const [pendingReplace, setPendingReplace] = React.useState<null | { id: string; text: string; name: string }>(null);
   const [driveQueue, setDriveQueue] = React.useState<Array<{ text: string; name: string; sourceUrl?: string }>>([]);
   const [driveStats, setDriveStats] = React.useState({ imported: 0, replaced: 0, skipped: 0 });
+  const [savedFolders, setSavedFolders] = React.useState<Record<string, { id: string; name: string }>>({});
 
   const processNextDrive = async () => {
     if (pendingReplace || confirmOpen) return; // wait for decision
@@ -119,6 +120,62 @@ const Datasets = () => {
       toast({ title: "Sync failed", description: String(err), variant: "destructive" as any });
     }
   };
+
+  const handleSaveFolder = async (folderUrl: string, folderName: string) => {
+    try {
+      const folderId = folderUrl.match(/folders\/([a-zA-Z0-9_-]+)/)?.[1];
+      const { ok, sourceId } = await librarySave({
+        kind: "drive_folder",
+        name: folderName,
+        config: { folderId, folderUrl },
+        syncEnabled: true,
+        syncIntervalMins: 60
+      });
+
+      if (!ok) throw new Error('Save failed');
+
+      setSavedFolders(prev => ({
+        ...prev,
+        [folderUrl]: { id: sourceId, name: folderName }
+      }));
+
+      toast({ title: "תיקייה נשמרה", description: "התיקייה נוספה לספרייה" });
+    } catch (err: any) {
+      toast({ title: "שמירה נכשלה", description: String(err), variant: "destructive" as any });
+    }
+  };
+
+  const handleDeleteFolder = async (sourceId: string, folderUrl: string) => {
+    try {
+      const { ok } = await libraryDelete({ sourceId, deleteDatasets: false });
+      if (!ok) throw new Error('Delete failed');
+
+      setSavedFolders(prev => {
+        const newFolders = { ...prev };
+        delete newFolders[folderUrl];
+        return newFolders;
+      });
+
+      toast({ title: "תיקייה נמחקה", description: "התיקייה הוסרה מהספרייה" });
+    } catch (err: any) {
+      toast({ title: "מחיקה נכשלה", description: String(err), variant: "destructive" as any });
+    }
+  };
+
+  const handleSyncFolder = async (sourceId: string) => {
+    try {
+      const { ok, imported, updated, skipped } = await driveSync({ sourceId });
+      if (!ok) throw new Error('Sync failed');
+
+      toast({ 
+        title: "סנכרון הושלם", 
+        description: `יובאו: ${imported}, עודכנו: ${updated}, דולגו: ${skipped}` 
+      });
+    } catch (err: any) {
+      toast({ title: "סנכרון נכשל", description: String(err), variant: "destructive" as any });
+    }
+  };
+
   return (
     <main className="container mx-auto py-10">
       <PageMeta title="CGC DataHub — Datasets" description="Import from Google Drive and sync CRM systems" path="/datasets" />
@@ -197,7 +254,12 @@ const Datasets = () => {
       </div>
 
       <div className="mt-10">
-        <h2 className="text-lg font-semibold mb-3">{t("preview")}</h2>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-lg font-semibold">{t("preview")}</h2>
+          <Button asChild variant="outline">
+            <Link to="/library">ספרייה</Link>
+          </Button>
+        </div>
         <ul className="space-y-2">
           {datasets.map((d) => (
             <li key={d.id} className="flex items-center justify-between border rounded-md p-3">

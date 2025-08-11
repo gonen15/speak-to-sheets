@@ -24,6 +24,7 @@ import { DataStoreProvider } from "./store/dataStore";
 import ExecutiveHub from "@/pages/ExecutiveHub";
 import ModelWizard from "@/pages/ModelWizard";
 import Goals from "@/pages/Goals";
+import Library from "@/pages/Library";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/datasets" element={<Datasets />} />
                 <Route path="/datasets/:id" element={<DatasetDetail />} />
+                <Route path="/library" element={<Library />} />
                 <Route path="/model" element={<Model />} />
                 <Route path="/model/wizard" element={<ModelWizard />} />
                 <Route path="/dashboards" element={<Dashboards />} />

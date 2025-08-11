@@ -1,5 +1,14 @@
 project_id = "vdsryddwzhcnoksamkep"
 
+[functions.library-save]
+verify_jwt = true
+
+[functions.library-delete]
+verify_jwt = true
+
+[functions.drive-sync]
+verify_jwt = true
+
 [functions.monday-sync]
 verify_jwt = true
 
