@@ -68,3 +68,6 @@ verify_jwt = true
 
 [functions.upload-start]
 verify_jwt = true
+
+[functions.ingest-csv]
+verify_jwt = true
