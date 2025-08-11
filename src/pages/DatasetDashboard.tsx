@@ -7,6 +7,7 @@ import ChartFrame from "@/components/charts/ChartFrame";
 import { BarChart, Bar, Legend, LineChart, Line } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { aggregateDataset, generateInsights, nlQuery, autoModel, aiMap } from "@/lib/supabaseEdge";
+import DataGrid from "@/components/ui/DataGrid";
 
 export default function DatasetDashboard(){
   const { id } = useParams();
@@ -21,6 +22,9 @@ export default function DatasetDashboard(){
   const [q,setQ] = useState("");
   const [qa,setQa] = useState<{answer?:string, rows?:any[], sql?:string}>({});
   const [trend, setTrend] = useState<Array<{ name: string; actual: number; forecast?: number; t?: number }>>([]);
+  const [numericMetrics, setNumericMetrics] = useState<string[]>([]);
+  const [numericTotals, setNumericTotals] = useState<Record<string, number>>({});
+  const [previewRows, setPreviewRows] = useState<any[]>([]);
 
   useEffect(()=>{(async()=>{
     if(!id) return;
@@ -32,6 +36,13 @@ export default function DatasetDashboard(){
       setMetrics(["count"]);
       const dateLike = cols.find(c => /date|time|day|month|created/i.test(c));
       if(dateLike) setDateField(dateLike);
+      // detect numeric-like columns and sample rows
+      const numeric = (cols || []).filter((c:string)=>/(amount|revenue|total|sum|cost|price|qty|quantity|units|value|sales|income|expense)/i.test(c)).slice(0,3);
+      setNumericMetrics(numeric);
+      try {
+        const { data: pr } = await supabase.from("dataset_rows").select("row").eq("dataset_id", id).limit(100);
+        setPreviewRows((pr||[]).map((r:any)=>r.row));
+      } catch {}
       // load existing insights
       const { data: existing } = await supabase.from("dataset_insights").select("*").eq("dataset_id", id).order("created_at", { ascending: false });
       setInsights(existing || []);
@@ -55,6 +66,18 @@ export default function DatasetDashboard(){
       });
       const row = Array.isArray(k.data?.rows) ? (k.data.rows as any[])[0] : null;
       setKpi(row);
+
+      // Numeric totals KPIs
+      if (numericMetrics.length) {
+        const sums = await aggregateDataset({ datasetId: id!, metrics: numericMetrics, dateRange: dateField ? { field: dateField } : undefined });
+        const r2 = Array.isArray(sums.data?.rows) ? (sums.data.rows as any[])[0] : {};
+        const totals: Record<string, number> = {};
+        numericMetrics.forEach((m) => { totals[m] = Number((r2 as any)?.[m] ?? 0); });
+        setNumericTotals(totals);
+      } else {
+        setNumericTotals({});
+      }
+
 
       // Distribution by selected dimension
       const dim = dims[0];
@@ -166,6 +189,9 @@ export default function DatasetDashboard(){
 
       <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16, marginBottom:16}}>
         <KPI label="Rows" value={kpi?.count ?? meta?.row_count ?? 0} format="number" />
+        {numericMetrics.map((m)=> (
+          <KPI key={m} label={`Σ ${m}`} value={numericTotals[m] || 0} format="number" />
+        ))}
         <div className="card" style={{padding:16, display:"flex", alignItems:"center", justifyContent:"space-between"}}>
           <div>
             <div className="label">AI Insights</div>
@@ -195,6 +221,14 @@ export default function DatasetDashboard(){
             {common}<Legend /><Bar dataKey="value" name="Value" radius={[6,6,0,0]} />
           </BarChart>
         )}/>
+      </Section>
+
+      <Section title="תצוגת נתונים">
+        <DataGrid 
+          columns={(meta?.columns||[]).map((c:string)=>({ key:c, label:c }))}
+          data={previewRows}
+          maxHeight="420px"
+        />
       </Section>
 
       <Section title="Insights">
