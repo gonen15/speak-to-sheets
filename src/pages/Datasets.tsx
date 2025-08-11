@@ -205,10 +205,22 @@ const Datasets = () => {
       if (error || !data?.ok || !data.csv) throw new Error(data?.error || error?.message || "שגיאת ייבוא");
 
       const desiredName = normalizeFileName("דוח פיילוט");
-      const res = await upsertCsv(desiredName, data.csv, pilotUrl.trim());
-      if (res?.id) {
-        toast({ title: "הייבוא הושלם", description: res.action === "replaced" ? "הוחלף" : "נוצר" });
-        navigate(`/datasets/${res.id}?tab=view`);
+      const { data: upsert, error: upErr } = await supabase.rpc(
+        "dataset_upsert_from_csv",
+        {
+          p_name: desiredName,
+          p_csv: data.csv,
+          p_source_url: pilotUrl.trim(),
+          p_replace: true,
+        }
+      );
+      if (upErr) throw upErr;
+      const result: any = Array.isArray(upsert) ? upsert[0] : upsert;
+      const datasetId = result?.dataset_id as string | undefined;
+      const action = result?.action as string | undefined;
+      if (datasetId) {
+        toast({ title: "הייבוא הושלם", description: action === "replaced" ? "הוחלף" : "נוצר" });
+        navigate(`/dashboards/dataset/${datasetId}`);
       }
     } catch (err: any) {
       toast({ title: "ייבוא נכשל", description: String(err?.message || err), variant: "destructive" as any });
