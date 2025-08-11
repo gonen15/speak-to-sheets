@@ -44,6 +44,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_column_mappings: {
+        Row: {
+          column_name: string
+          confidence: number
+          dataset_id: string
+          target: string
+        }
+        Insert: {
+          column_name: string
+          confidence?: number
+          dataset_id: string
+          target: string
+        }
+        Update: {
+          column_name?: string
+          confidence?: number
+          dataset_id?: string
+          target?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_column_mappings_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "master_flat"
+            referencedColumns: ["dataset_id"]
+          },
+          {
+            foreignKeyName: "ai_column_mappings_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alert_events: {
         Row: {
           happened_at: string | null
@@ -115,6 +151,39 @@ export type Database = {
         }
         Relationships: []
       }
+      data_catalog: {
+        Row: {
+          columns: Json
+          dataset_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          columns?: Json
+          dataset_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          columns?: Json
+          dataset_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_catalog_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: true
+            referencedRelation: "master_flat"
+            referencedColumns: ["dataset_id"]
+          },
+          {
+            foreignKeyName: "data_catalog_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: true
+            referencedRelation: "uploaded_datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_source_datasets: {
         Row: {
           dataset_id: string
@@ -129,6 +198,13 @@ export type Database = {
           source_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "data_source_datasets_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "master_flat"
+            referencedColumns: ["dataset_id"]
+          },
           {
             foreignKeyName: "data_source_datasets_dataset_id_fkey"
             columns: ["dataset_id"]
@@ -220,6 +296,13 @@ export type Database = {
             foreignKeyName: "dataset_insights_dataset_id_fkey"
             columns: ["dataset_id"]
             isOneToOne: false
+            referencedRelation: "master_flat"
+            referencedColumns: ["dataset_id"]
+          },
+          {
+            foreignKeyName: "dataset_insights_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
             referencedRelation: "uploaded_datasets"
             referencedColumns: ["id"]
           },
@@ -274,6 +357,13 @@ export type Database = {
           row?: Json
         }
         Relationships: [
+          {
+            foreignKeyName: "dataset_rows_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "master_flat"
+            referencedColumns: ["dataset_id"]
+          },
           {
             foreignKeyName: "dataset_rows_dataset_id_fkey"
             columns: ["dataset_id"]
@@ -716,6 +806,13 @@ export type Database = {
             foreignKeyName: "sync_sources_dataset_id_fkey"
             columns: ["dataset_id"]
             isOneToOne: false
+            referencedRelation: "master_flat"
+            referencedColumns: ["dataset_id"]
+          },
+          {
+            foreignKeyName: "sync_sources_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
             referencedRelation: "uploaded_datasets"
             referencedColumns: ["id"]
           },
@@ -958,6 +1055,19 @@ export type Database = {
       }
     }
     Views: {
+      master_flat: {
+        Row: {
+          amount: number | null
+          customer: string | null
+          dataset_id: string | null
+          date: string | null
+          department: string | null
+          raw_row: Json | null
+          source_name: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
       monday_items_flat: {
         Row: {
           amount: number | null
@@ -1048,6 +1158,20 @@ export type Database = {
           sql: string
         }[]
       }
+      aggregate_master: {
+        Args: {
+          p_metrics: string[]
+          p_dimensions?: string[]
+          p_filters?: Json
+          p_date_from?: string
+          p_date_to?: string
+          p_limit?: number
+        }
+        Returns: {
+          rows: Json
+          sql: string
+        }[]
+      }
       dataset_upsert_from_csv: {
         Args: {
           p_name: string
@@ -1059,6 +1183,10 @@ export type Database = {
           dataset_id: string
           action: string
         }[]
+      }
+      master_get: {
+        Args: { p_row: Json; p_dataset: string; p_target: string }
+        Returns: string
       }
       monday_cv_text: {
         Args: { colvals: Json; col_id: string }
