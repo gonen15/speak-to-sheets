@@ -29,8 +29,12 @@ const Datasets = () => {
   const [uploading, setUploading] = React.useState(false);
   const [uploadingDrive, setUploadingDrive] = React.useState(false);
   const [syncingMonday, setSyncingMonday] = React.useState(false);
-
-  const processNextDrive = async () => {
+  
+  // Pilot state
+  const [pilotUrl, setPilotUrl] = React.useState<string>(
+    "https://docs.google.com/spreadsheets/d/1GsGdNfcSU3QtqtiKUkdQiC4XXRp1DT-W5j55DSHPTxg/edit?usp=drive_link"
+  );
+  const [pilotBusy, setPilotBusy] = React.useState(false);
     if (pendingReplace || confirmOpen) return; // wait for decision
     if (driveQueue.length === 0) {
       const total = driveStats.imported + driveStats.replaced + driveStats.skipped;
