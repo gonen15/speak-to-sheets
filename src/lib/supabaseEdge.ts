@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"; // משתמש ב-client הקיים שלך
 
-export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard" | "dataset-replace" | "ai-chat" | "executive-snapshot" | "filters-save" | "filters-get" | "aggregate-run" | "goals-save" | "goals-snapshot" | "insights-digest" | "library-save" | "library-delete" | "drive-sync" | "upload-start" | "ingest-csv" | "drive-sync-start" | "drive-sync-step";
+export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard" | "dataset-replace" | "ai-chat" | "executive-snapshot" | "filters-save" | "filters-get" | "aggregate-run" | "goals-save" | "goals-snapshot" | "insights-digest" | "library-save" | "library-delete" | "drive-sync" | "upload-start" | "ingest-csv" | "drive-sync-start" | "drive-sync-step" | "ai-map";
 
 export interface CallEdgeOptions {
   body?: unknown;
@@ -236,4 +236,8 @@ export function driveSyncStep(payload: { jobId: string; batchSize?: number; repl
     "drive-sync-step",
     { body: payload }
   );
+}
+
+export function aiMap(payload: { datasetId: string }) {
+  return callEdge<{ ok: boolean; mapped: number }>("ai-map", { body: payload });
 }

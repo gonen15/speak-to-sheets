@@ -6,7 +6,7 @@ import Section from "@/components/ui/Section";
 import ChartFrame from "@/components/charts/ChartFrame";
 import { BarChart, Bar, Legend, LineChart, Line } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
-import { aggregateDataset, generateInsights, nlQuery, autoModel } from "@/lib/supabaseEdge";
+import { aggregateDataset, generateInsights, nlQuery, autoModel, aiMap } from "@/lib/supabaseEdge";
 
 export default function DatasetDashboard(){
   const { id } = useParams();
@@ -36,7 +36,8 @@ export default function DatasetDashboard(){
       const { data: existing } = await supabase.from("dataset_insights").select("*").eq("dataset_id", id).order("created_at", { ascending: false });
       setInsights(existing || []);
 
-      // Auto-generate a semantic model (idempotent) and load charts
+      // Auto-map columns (idempotent) and generate a semantic model, then load charts
+      try { await aiMap({ datasetId: id! }); } catch {}
       try { await autoModel({ source: "dataset", datasetId: id! }); } catch {}
       await load();
       if (!existing || existing.length === 0) { try { await runInsights(); } catch {} }
