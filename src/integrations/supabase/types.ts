@@ -986,6 +986,18 @@ export type Database = {
           sql: string
         }[]
       }
+      dataset_upsert_from_csv: {
+        Args: {
+          p_name: string
+          p_csv: string
+          p_source_url?: string
+          p_replace?: boolean
+        }
+        Returns: {
+          dataset_id: string
+          action: string
+        }[]
+      }
       monday_cv_text: {
         Args: { colvals: Json; col_id: string }
         Returns: string
