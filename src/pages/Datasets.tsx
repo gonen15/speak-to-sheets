@@ -25,6 +25,9 @@ const Datasets = () => {
   const [driveQueue, setDriveQueue] = React.useState<Array<{ text: string; name: string; sourceUrl?: string }>>([]);
   const [driveStats, setDriveStats] = React.useState({ imported: 0, replaced: 0, skipped: 0 });
   const [savedFolders, setSavedFolders] = React.useState<Record<string, { id: string; name: string }>>({});
+  const [uploading, setUploading] = React.useState(false);
+  const [uploadingDrive, setUploadingDrive] = React.useState(false);
+  const [syncingMonday, setSyncingMonday] = React.useState(false);
 
   const processNextDrive = async () => {
     if (pendingReplace || confirmOpen) return; // wait for decision
@@ -64,12 +67,22 @@ const Datasets = () => {
 
   const onUploadCsv = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (uploading) return;
+    
     const form = e.currentTarget as HTMLFormElement & { file: { files: FileList }; name?: { value: string } };
     const file = form.file.files?.[0];
     if (!file) return;
-    const desiredName = normalizeFileName((form.name?.value || file.name || "").trim());
-    const text = await file.text();
+    
+    setUploading(true);
+    toast({ title: "מעלה קובץ...", description: `קורא ${file.name}` });
+    
     try {
+      const desiredName = normalizeFileName((form.name?.value || file.name || "").trim());
+      toast({ title: "מעבד קובץ...", description: `מנתח ${desiredName}` });
+      
+      const text = await file.text();
+      toast({ title: "שומר לדאטהבייס...", description: desiredName });
+      
       const res = await upsertCsv(desiredName || file.name, text);
       toast({ 
         title: res.action === "replaced" ? "הוחלף בהצלחה" : "הועלה בהצלחה", 
@@ -78,30 +91,45 @@ const Datasets = () => {
       navigate(`/datasets/${res.id}`);
     } catch (err: any) {
       toast({ title: "העלאה נכשלה", description: String(err), variant: "destructive" as any });
+    } finally {
+      setUploading(false);
     }
   };
   const onImportDrive = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (uploadingDrive) return;
+    
     const form = e.currentTarget as HTMLFormElement & { folderUrl: { value: string } };
     const folderUrl = form.folderUrl.value.trim();
     if (!folderUrl) return;
+    
+    setUploadingDrive(true);
+    toast({ title: "מתחבר לגוגל דרייב...", description: "סורק תיקייה" });
+    
     try {
       const res = await driveImport({ folderUrl });
       const files = (res.files || []).filter((f: any) => f.csv && !f.error);
+      
       if (files.length === 0) {
         toast({ title: "לא נמצאו קבצי CSV/Sheets", description: "ודא שהתיקייה והקבצים משותפים כ-Anyone with the link – Viewer", variant: "destructive" as any });
         return;
       }
+      
+      toast({ title: `נמצאו ${files.length} קבצים`, description: "מתחיל עיבוד..." });
       setDriveStats({ imported: 0, replaced: 0, skipped: 0 });
       setDriveQueue(files.map((f: any) => ({ text: f.csv as string, name: (f.name as string) || "Drive CSV", sourceUrl: f.sourceUrl as string | undefined })));
       setTimeout(processNextDrive, 0);
     } catch (err: any) {
       toast({ title: "Import failed", description: String(err), variant: "destructive" as any });
+    } finally {
+      setUploadingDrive(false);
     }
   };
 
   const onSyncMonday = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (syncingMonday) return;
+    
     const form = e.currentTarget as HTMLFormElement & { boardIds: { value: string } };
     const raw = form.boardIds.value.trim();
     const ids = raw
@@ -110,6 +138,10 @@ const Datasets = () => {
           .map((s) => parseInt(s.trim(), 10))
           .filter((n) => !isNaN(n))
       : undefined;
+    
+    setSyncingMonday(true);
+    toast({ title: "מתחבר ל-Monday...", description: "מתחיל סנכרון" });
+    
     try {
       const { data, error } = await supabase.functions.invoke<{ ok: boolean; boards: number; items: number }>("monday-sync", {
         body: { boardIds: ids },
@@ -118,6 +150,8 @@ const Datasets = () => {
       toast({ title: "Monday synced", description: `${data.boards} boards • ${data.items} items` });
     } catch (err: any) {
       toast({ title: "Sync failed", description: String(err), variant: "destructive" as any });
+    } finally {
+      setSyncingMonday(false);
     }
   };
 
@@ -197,7 +231,9 @@ const Datasets = () => {
                 <Label htmlFor="name">Name (optional)</Label>
                 <Input id="name" name="name" placeholder="Dataset name" />
               </div>
-              <Button type="submit">Upload</Button>
+              <Button type="submit" disabled={uploading}>
+                {uploading ? "מעלה..." : "Upload"}
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -213,7 +249,9 @@ const Datasets = () => {
                 <Label htmlFor="folderUrl">Folder URL</Label>
                 <Input id="folderUrl" name="folderUrl" placeholder="https://drive.google.com/drive/folders/11uueYvA4ZMKzmnHWTS4YDGVJKuBYFSD8" />
               </div>
-              <Button type="submit">Import from Drive</Button>
+              <Button type="submit" disabled={uploadingDrive}>
+                {uploadingDrive ? "מתחבר..." : "Import from Drive"}
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -229,7 +267,9 @@ const Datasets = () => {
                 <Label htmlFor="boardIds">Board IDs (optional)</Label>
                 <Input id="boardIds" name="boardIds" placeholder="12345, 67890" />
               </div>
-              <Button type="submit">Sync Monday CRM</Button>
+              <Button type="submit" disabled={syncingMonday}>
+                {syncingMonday ? "מסנכרן..." : "Sync Monday CRM"}
+              </Button>
             </form>
           </CardContent>
         </Card>
