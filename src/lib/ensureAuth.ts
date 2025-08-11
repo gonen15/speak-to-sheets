@@ -5,8 +5,8 @@ export async function ensureAuth() {
   if (!session) {
     try {
       await supabase.auth.signInAnonymously();
-    } catch (e) {
-      console.error("Anonymous sign-in failed", e);
+    } catch (e: any) {
+      console.warn("Anonymous sign-ins disabled in Supabase Auth. Enable it or sign in normally.", e?.message);
     }
   }
 }
