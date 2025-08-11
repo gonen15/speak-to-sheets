@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { JobDetail } from "@/components/ui/JobDetail";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Eye } from "lucide-react";
 
 interface UploadJob {
   id: string;
@@ -17,10 +20,12 @@ interface UploadJob {
 
 interface UploadProgressProps {
   onJobComplete?: (job: UploadJob) => void;
+  onNavigateToDataset?: (datasetId: string) => void;
 }
 
-export const UploadProgress: React.FC<UploadProgressProps> = ({ onJobComplete }) => {
+export const UploadProgress: React.FC<UploadProgressProps> = ({ onJobComplete, onNavigateToDataset }) => {
   const [jobs, setJobs] = useState<UploadJob[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -103,6 +108,16 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({ onJobComplete })
 
   if (jobs.length === 0) return null;
 
+  if (selectedJobId) {
+    return (
+      <JobDetail 
+        jobId={selectedJobId} 
+        onClose={() => setSelectedJobId(null)}
+        onNavigateToDataset={onNavigateToDataset}
+      />
+    );
+  }
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -115,9 +130,18 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({ onJobComplete })
             <div key={job.id} className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="font-medium">{job.name}</span>
-                <span className={`text-sm ${getStatusColor(job.status)}`}>
-                  {getStatusText(job.status)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm ${getStatusColor(job.status)}`}>
+                    {getStatusText(job.status)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedJobId(job.id)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               {job.status === 'running' && (
                 <Progress value={job.progress} className="h-2" />

@@ -270,11 +270,14 @@ const Datasets = () => {
       <PageMeta title="CGC DataHub — Datasets" description="Import from Google Drive and sync CRM systems" path="/datasets" />
       <h1 className="text-2xl font-semibold mb-6">{t("datasets")}</h1>
 
-      <UploadProgress onJobComplete={(job) => {
-        if (job.dataset_id) {
-          navigate(`/datasets/${job.dataset_id}`);
-        }
-      }} />
+      <UploadProgress 
+        onJobComplete={(job) => {
+          if (job.dataset_id) {
+            navigate(`/datasets/${job.dataset_id}`);
+          }
+        }}
+        onNavigateToDataset={(datasetId) => navigate(`/datasets/${datasetId}`)}
+      />
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
