@@ -58,6 +58,8 @@ Deno.serve(async (req)=>{
       try{
         await supa.from("upload_job_items").update({ state:"running" }).eq("id", it.id);
         await supa.from("upload_jobs").update({ current_file: it.name }).eq("id", jobId);
+        // Log start of processing for this item
+        await supa.from("upload_job_logs").insert({ job_id: jobId, level: "info", message: `Processing: ${it.name}` });
 
         let results: Array<{name:string,csv:string,sourceUrl:string}> = [];
         if(it.mime==="application/vnd.google-apps.spreadsheet"){
@@ -94,16 +96,26 @@ Deno.serve(async (req)=>{
           state:"done", action:lastAction, dataset_id: lastDataset, finished_at: new Date().toISOString()
         }).eq("id", it.id);
 
+        // Link dataset to saved source in Library if newly created
+        if (job?.source_ref && lastDataset && lastAction === "created") {
+          await supa.from("data_source_datasets").upsert({ source_id: job.source_ref as string, dataset_id: lastDataset });
+        }
+
         // attach last dataset to the parent job for UI navigation
         if (lastDataset) {
           await supa.from("upload_jobs").update({ dataset_id: lastDataset }).eq("id", jobId);
         }
+
+        // Log success for this item
+        await supa.from("upload_job_logs").insert({ job_id: jobId, level: "info", message: `Done: ${it.name}`, ctx: { action: lastAction, dataset_id: lastDataset } });
 
         doneNow.push({ id: it.id, name: it.name, state:"done", action:lastAction });
       }catch(e:any){
         await supa.from("upload_job_items").update({
           state:"error", error: String(e?.message||e), finished_at: new Date().toISOString()
         }).eq("id", it.id);
+        // Log error for this item
+        await supa.from("upload_job_logs").insert({ job_id: jobId, level: "error", message: `Error: ${it.name}`, ctx: { error: String(e?.message||e) } });
         doneNow.push({ id: it.id, name: it.name, state:"error", action:null, error:String(e?.message||e) });
       }
 

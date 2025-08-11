@@ -34,6 +34,36 @@ Deno.serve(async (req)=>{
 
     const jobId = ins.data!.id as string;
 
+    // Save or find a Library source for this folder and link to the job
+    let sourceId: string | null = null;
+    try{
+      const saveToLibrary = (body?.saveToLibrary !== false);
+      if (saveToLibrary) {
+        const { data: existing } = await supa
+          .from("data_sources")
+          .select("id")
+          .eq("kind","drive_folder")
+          .eq("is_saved", true)
+          .contains("config", { folderId })
+          .limit(1);
+        sourceId = existing?.[0]?.id || null;
+        if (!sourceId) {
+          const insSrc = await supa.from("data_sources").insert({
+            kind: "drive_folder",
+            name: body.name || `Drive ${folderId}`,
+            is_saved: true,
+            config: { folderId, folderUrl: body.folderUrl || null },
+            sync_enabled: true,
+            sync_interval_mins: 60,
+          }).select("id").maybeSingle();
+          if (!insSrc.error) sourceId = (insSrc.data as any)?.id || null;
+        }
+        if (sourceId) {
+          await supa.from("upload_jobs").update({ source_ref: sourceId }).eq("id", jobId);
+        }
+      }
+    }catch(e){ /* non-fatal */ }
+
     // רשימת קבצים
     const base="https://www.googleapis.com/drive/v3/files";
     const q=`'${folderId}' in parents and trashed=false and (mimeType='application/vnd.google-apps.spreadsheet' or mimeType='text/csv' or name contains '.csv')`;
@@ -57,6 +87,9 @@ Deno.serve(async (req)=>{
     }while(pageToken);
 
     await supa.from("upload_jobs").update({ total_items: total, done_items:0, progress: total?2:100, status: total? "running":"completed" }).eq("id", jobId);
+
+    // Log queue result
+    await supa.from("upload_job_logs").insert({ job_id: jobId, level: "info", message: `Queued ${total} items${sourceId ? " • source linked" : ""}`, ctx: { folderId } });
 
     return new Response(JSON.stringify({ ok:true, jobId, total }), { status:200, headers:{...H,"Content-Type":"application/json"}});
   }catch(e:any){
