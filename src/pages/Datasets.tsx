@@ -10,7 +10,7 @@ import { UploadProgress } from "@/components/ui/UploadProgress";
 import { normalizeFileName } from "@/lib/fileHash";
 import { useI18n } from "@/i18n/i18n";
 import { useDataStore } from "@/store/dataStore";
-import DriveImportPanel from "@/components/ui/DriveImportPanel";
+import DriveImportPanel from "@/components/upload/DriveImportPanel";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { datasetReplace, librarySave, libraryDelete, driveSync, uploadStart, ingestCsv } from "@/lib/supabaseEdge";
