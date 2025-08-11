@@ -66,6 +66,73 @@ const Datasets = () => {
     return { id, action: "created" };
   };
 
+  const handleFiles = async (files: File[]) => {
+    for (const file of files) {
+      try {
+        // 1) Start upload job
+        const startResult = await uploadStart({
+          sourceKind: "file",
+          name: file.name,
+          sizeBytes: file.size,
+          mime: file.type
+        });
+
+        if (!startResult?.ok || !startResult.jobId) {
+          toast({ title: "נכשל ביצירת משימה", description: file.name, variant: "destructive" });
+          continue;
+        }
+
+        const jobId = startResult.jobId;
+
+        // 2) Upload to Storage
+        const path = `incoming/${jobId}.csv`;
+        const { error: uploadError } = await supabase.storage
+          .from("incoming")
+          .upload(path, file, { upsert: true });
+
+        if (uploadError) {
+          await markJobFailed(jobId, uploadError.message);
+          continue;
+        }
+
+        // 3) Process in Edge Function (dedup/replace happens inside)
+        const ingestResult = await ingestCsv({
+          jobId,
+          datasetName: normalizeFileName(file.name)
+        });
+
+        if (!ingestResult?.ok) {
+          toast({ 
+            title: "עיבוד נכשל", 
+            description: ingestResult?.error || "שגיאה לא ידועה", 
+            variant: "destructive" 
+          });
+        }
+      } catch (err: any) {
+        toast({ 
+          title: "שגיאה בעיבוד קובץ", 
+          description: `${file.name}: ${err.message}`, 
+          variant: "destructive" 
+        });
+      }
+    }
+  };
+
+  const markJobFailed = async (jobId: string, error: string) => {
+    try {
+      await supabase
+        .from("upload_jobs")
+        .update({
+          status: "failed",
+          error,
+          finished_at: new Date().toISOString()
+        })
+        .eq("id", jobId);
+    } catch (updateError) {
+      console.error("Failed to update job status:", updateError);
+    }
+  };
+
   const onUploadCsv = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (uploading) return;
@@ -77,50 +144,8 @@ const Datasets = () => {
     setUploading(true);
     
     try {
-      const desiredName = normalizeFileName((form.name?.value || file.name || "").trim());
-      
-      // Step 1: Start upload job
-      toast({ title: "מתחיל העלאה...", description: `יוצר משימה עבור ${desiredName}` });
-      
-      const jobResult = await uploadStart({
-        sourceKind: 'file',
-        name: desiredName,
-        sizeBytes: file.size,
-        mime: file.type
-      });
-      
-      if (!jobResult?.ok || !jobResult.jobId) {
-        throw new Error("Failed to create upload job");
-      }
-      
-      // Step 2: Upload file to storage
-      toast({ title: "מעלה קובץ...", description: `שומר ${file.name}` });
-      
-      const { error: uploadError } = await supabase.storage
-        .from('incoming')
-        .upload(`incoming/${jobResult.jobId}.csv`, file, {
-          upsert: true
-        });
-      
-      if (uploadError) throw uploadError;
-      
-      // Step 3: Trigger ingestion
-      toast({ title: "מעבד נתונים...", description: "מנתח וחוסך לדאטהבייס" });
-      
-      const ingestResult = await ingestCsv({
-        jobId: jobResult.jobId,
-        datasetName: desiredName,
-        replace: false
-      });
-      
-      if (!ingestResult?.ok) {
-        throw new Error(ingestResult?.error || "Ingestion failed");
-      }
-      
-      // Success handled by UploadProgress component
+      await handleFiles([file]);
       form.reset();
-    } catch (err: any) {
-      toast({ title: "העלאה נכשלה", description: String(err?.message || err), variant: "destructive" as any });
     } finally {
       setUploading(false);
     }
@@ -261,7 +286,21 @@ const Datasets = () => {
             <form className="space-y-3" onSubmit={onUploadCsv}>
               <div className="space-y-2">
                 <Label htmlFor="file">CSV File</Label>
-                <Input id="file" name="file" type="file" accept=".csv,text/csv" required />
+                <Input 
+                  id="file" 
+                  name="file" 
+                  type="file" 
+                  accept=".csv,text/csv" 
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 1) {
+                      setUploading(true);
+                      handleFiles(files).finally(() => setUploading(false));
+                    }
+                  }}
+                  required 
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="name">Name (optional)</Label>
