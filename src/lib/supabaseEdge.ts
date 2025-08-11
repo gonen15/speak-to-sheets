@@ -17,7 +17,14 @@ export async function callEdge<T = any>(
     headers: opts?.headers,
   });
   if (error) {
-    throw new Error(`${name} failed: ${error.message ?? "unknown error"}`);
+    // Try to extract function response body for more context
+    const ctx = (error as any)?.context;
+    let details = "";
+    try {
+      const text = await ctx?.response?.text?.();
+      if (text) details = ` — ${text.substring(0, 500)}`;
+    } catch {}
+    throw new Error(`${name} failed: ${error.message || "unknown"}${details}`);
   }
   return data as T;
 }
