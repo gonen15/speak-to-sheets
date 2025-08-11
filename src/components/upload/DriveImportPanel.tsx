@@ -71,7 +71,7 @@ export default function DriveImportPanel(){
           <Checkbox id="replace" checked={replace} onCheckedChange={(v)=>setReplace(Boolean(v))} />
           <Label htmlFor="replace">להחליף אם קיים (Replace duplicates)</Label>
         </div>
-        <Button onClick={start} disabled={!folderUrl || job?.status==="running"}>התחל סנכרון</Button>
+        <Button onClick={start} disabled={!folderUrl || job?.status==="running"}>שמור</Button>
         {job ? <Button variant="outline" onClick={()=>setOpenReport(true)}>הצג דוח</Button> : null}
       </div>
 
