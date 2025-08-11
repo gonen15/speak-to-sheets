@@ -13,7 +13,6 @@ import DatasetDetail from "./pages/DatasetDetail";
 import Model from "./pages/Model";
 import Dashboards from "./pages/Dashboards";
 import DashboardDetail from "./pages/DashboardDetail";
-import Chat from "./pages/Chat";
 import Settings from "./pages/Settings";
 import SalesDashboard from "./pages/SalesDashboard";
 import PilotDashboard from "./pages/PilotDashboard";
@@ -24,11 +23,11 @@ import { I18nProvider } from "./i18n/i18n";
 import { DataStoreProvider } from "./store/dataStore";
 import ExecutiveHub from "@/pages/ExecutiveHub";
 import ModelWizard from "@/pages/ModelWizard";
-import Goals from "@/pages/Goals";
 import Library from "@/pages/Library";
 import MasterDashboard from "@/pages/MasterDashboard";
 import DepartmentsDashboard from "@/pages/DepartmentsDashboard";
 import { ensureAuth } from "@/lib/ensureAuth";
+import FloatingChat from "@/components/chat/FloatingChat";
 
 
 const queryClient = new QueryClient();
@@ -66,13 +65,13 @@ const App = () => {
                   <Route path="/dashboards/builder" element={<DashboardBuilder/>} />
                   <Route path="/dashboards/view" element={<DashboardView/>} />
                   <Route path="/executive" element={<ExecutiveHub/>} />
-                  <Route path="/goals" element={<Goals/>} />
-                  <Route path="/chat" element={<Chat />} />
+                  <Route path="/chat" element={<></>} />
                   <Route path="/settings" element={<Settings />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </BrowserRouter>
+                <FloatingChat />
+               </BrowserRouter>
             </DataStoreProvider>
           </I18nProvider>
         </TooltipProvider>
