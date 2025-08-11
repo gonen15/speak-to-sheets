@@ -6,13 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import PageMeta from "@/components/common/PageMeta";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import { UploadProgress } from "@/components/ui/UploadProgress";
 import { normalizeFileName } from "@/lib/fileHash";
 import { useI18n } from "@/i18n/i18n";
 import { useDataStore } from "@/store/dataStore";
 import { driveImport } from "@/lib/supabaseEdge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { datasetReplace, librarySave, libraryDelete, driveSync } from "@/lib/supabaseEdge";
+import { datasetReplace, librarySave, libraryDelete, driveSync, uploadStart, ingestCsv } from "@/lib/supabaseEdge";
 
 const Datasets = () => {
   const { t } = useI18n();
@@ -74,23 +75,52 @@ const Datasets = () => {
     if (!file) return;
     
     setUploading(true);
-    toast({ title: "מעלה קובץ...", description: `קורא ${file.name}` });
     
     try {
       const desiredName = normalizeFileName((form.name?.value || file.name || "").trim());
-      toast({ title: "מעבד קובץ...", description: `מנתח ${desiredName}` });
       
-      const text = await file.text();
-      toast({ title: "שומר לדאטהבייס...", description: desiredName });
+      // Step 1: Start upload job
+      toast({ title: "מתחיל העלאה...", description: `יוצר משימה עבור ${desiredName}` });
       
-      const res = await upsertCsv(desiredName || file.name, text);
-      toast({ 
-        title: res.action === "replaced" ? "הוחלף בהצלחה" : "הועלה בהצלחה", 
-        description: desiredName 
+      const jobResult = await uploadStart({
+        sourceKind: 'file',
+        name: desiredName,
+        sizeBytes: file.size,
+        mime: file.type
       });
-      navigate(`/datasets/${res.id}`);
+      
+      if (!jobResult?.ok || !jobResult.jobId) {
+        throw new Error("Failed to create upload job");
+      }
+      
+      // Step 2: Upload file to storage
+      toast({ title: "מעלה קובץ...", description: `שומר ${file.name}` });
+      
+      const { error: uploadError } = await supabase.storage
+        .from('incoming')
+        .upload(`incoming/${jobResult.jobId}.csv`, file, {
+          upsert: true
+        });
+      
+      if (uploadError) throw uploadError;
+      
+      // Step 3: Trigger ingestion
+      toast({ title: "מעבד נתונים...", description: "מנתח וחוסך לדאטהבייס" });
+      
+      const ingestResult = await ingestCsv({
+        jobId: jobResult.jobId,
+        datasetName: desiredName,
+        replace: false
+      });
+      
+      if (!ingestResult?.ok) {
+        throw new Error(ingestResult?.error || "Ingestion failed");
+      }
+      
+      // Success handled by UploadProgress component
+      form.reset();
     } catch (err: any) {
-      toast({ title: "העלאה נכשלה", description: String(err), variant: "destructive" as any });
+      toast({ title: "העלאה נכשלה", description: String(err?.message || err), variant: "destructive" as any });
     } finally {
       setUploading(false);
     }
@@ -214,6 +244,12 @@ const Datasets = () => {
     <main className="container mx-auto py-10">
       <PageMeta title="CGC DataHub — Datasets" description="Import from Google Drive and sync CRM systems" path="/datasets" />
       <h1 className="text-2xl font-semibold mb-6">{t("datasets")}</h1>
+
+      <UploadProgress onJobComplete={(job) => {
+        if (job.dataset_id) {
+          navigate(`/datasets/${job.dataset_id}`);
+        }
+      }} />
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card>

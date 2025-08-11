@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"; // משתמש ב-client הקיים שלך
 
-export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard" | "dataset-replace" | "ai-chat" | "executive-snapshot" | "filters-save" | "filters-get" | "aggregate-run" | "goals-save" | "goals-snapshot" | "insights-digest" | "library-save" | "library-delete" | "drive-sync";
+export type EdgeName = "model-save" | "model-get" | "query-aggregate" | "sheet-fetch" | "drive-import" | "dataset-index" | "insights-generate" | "nl-query" | "model-auto" | "dashboard" | "dataset-replace" | "ai-chat" | "executive-snapshot" | "filters-save" | "filters-get" | "aggregate-run" | "goals-save" | "goals-snapshot" | "insights-digest" | "library-save" | "library-delete" | "drive-sync" | "upload-start" | "ingest-csv";
 
 export interface CallEdgeOptions {
   body?: unknown;
@@ -185,4 +185,23 @@ export function driveSync(payload: {
   sourceId: string;
 }) {
   return callEdge<{ ok: boolean; imported: number; updated: number; skipped: number; total: number }>("drive-sync", { body: payload });
+}
+
+export function uploadStart(payload: {
+  sourceKind: string;
+  name: string;
+  sizeBytes?: number;
+  mime?: string;
+  sourceRef?: string;
+}) {
+  return callEdge<{ ok: boolean; jobId?: string; error?: string }>("upload-start", { body: payload });
+}
+
+export function ingestCsv(payload: {
+  jobId: string;
+  datasetName: string;
+  replace?: boolean;
+  sourceUrl?: string;
+}) {
+  return callEdge<{ ok: boolean; datasetId?: string; action?: string; stats?: any; error?: string }>("ingest-csv", { body: payload });
 }
