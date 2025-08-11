@@ -27,6 +27,7 @@ import ModelWizard from "@/pages/ModelWizard";
 import Goals from "@/pages/Goals";
 import Library from "@/pages/Library";
 import MasterDashboard from "@/pages/MasterDashboard";
+import DepartmentsDashboard from "@/pages/DepartmentsDashboard";
 import { ensureAuth } from "@/lib/ensureAuth";
 
 
@@ -59,6 +60,7 @@ const App = () => {
                   <Route path="/dashboards/sales" element={<SalesDashboard />} />
                   <Route path="/dashboards/pilot" element={<PilotDashboard />} />
                   <Route path="/dashboards/master" element={<MasterDashboard />} />
+                  <Route path="/dashboards/departments" element={<DepartmentsDashboard />} />
                   <Route path="/dashboards/dataset/:id" element={<DatasetDashboard />} />
                   <Route path="/dashboards/:id" element={<DashboardDetail />} />
                   <Route path="/dashboards/builder" element={<DashboardBuilder/>} />
