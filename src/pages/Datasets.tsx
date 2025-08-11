@@ -243,10 +243,10 @@ const Datasets = () => {
       <UploadProgress 
         onJobComplete={(job) => {
           if (job.dataset_id) {
-            navigate(`/datasets/${job.dataset_id}`);
+            navigate(`/dashboards/dataset/${job.dataset_id}`);
           }
         }}
-        onNavigateToDataset={(datasetId) => navigate(`/datasets/${datasetId}`)}
+        onNavigateToDataset={(datasetId) => navigate(`/dashboards/dataset/${datasetId}`)}
       />
 
       <div className="grid md:grid-cols-2 gap-6">
