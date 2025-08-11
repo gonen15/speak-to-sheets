@@ -721,6 +721,98 @@ export type Database = {
           },
         ]
       }
+      upload_job_logs: {
+        Row: {
+          ctx: Json | null
+          id: number
+          job_id: string | null
+          level: string
+          message: string
+          ts: string | null
+        }
+        Insert: {
+          ctx?: Json | null
+          id?: number
+          job_id?: string | null
+          level?: string
+          message: string
+          ts?: string | null
+        }
+        Update: {
+          ctx?: Json | null
+          id?: number
+          job_id?: string | null
+          level?: string
+          message?: string
+          ts?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upload_job_logs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "upload_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      upload_jobs: {
+        Row: {
+          action: string | null
+          created_at: string | null
+          dataset_id: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          mime: string | null
+          name: string
+          progress: number
+          size_bytes: number | null
+          source_kind: string
+          source_ref: string | null
+          started_at: string | null
+          stats: Json
+          status: string
+          user_id: string
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string | null
+          dataset_id?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          mime?: string | null
+          name: string
+          progress?: number
+          size_bytes?: number | null
+          source_kind: string
+          source_ref?: string | null
+          started_at?: string | null
+          stats?: Json
+          status?: string
+          user_id?: string
+        }
+        Update: {
+          action?: string | null
+          created_at?: string | null
+          dataset_id?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          mime?: string | null
+          name?: string
+          progress?: number
+          size_bytes?: number | null
+          source_kind?: string
+          source_ref?: string | null
+          started_at?: string | null
+          stats?: Json
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       uploaded_datasets: {
         Row: {
           columns: string[]
