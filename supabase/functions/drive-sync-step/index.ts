@@ -94,6 +94,11 @@ Deno.serve(async (req)=>{
           state:"done", action:lastAction, dataset_id: lastDataset, finished_at: new Date().toISOString()
         }).eq("id", it.id);
 
+        // attach last dataset to the parent job for UI navigation
+        if (lastDataset) {
+          await supa.from("upload_jobs").update({ dataset_id: lastDataset }).eq("id", jobId);
+        }
+
         doneNow.push({ id: it.id, name: it.name, state:"done", action:lastAction });
       }catch(e:any){
         await supa.from("upload_job_items").update({
