@@ -4,9 +4,9 @@ import PageMeta from "@/components/common/PageMeta";
 import KPI from "@/components/ui/KPI";
 import Section from "@/components/ui/Section";
 import ChartFrame from "@/components/charts/ChartFrame";
-import { BarChart, Bar, Legend } from "recharts";
+import { BarChart, Bar, Legend, LineChart, Line } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
-import { aggregateDataset, generateInsights, nlQuery } from "@/lib/supabaseEdge";
+import { aggregateDataset, generateInsights, nlQuery, autoModel } from "@/lib/supabaseEdge";
 
 export default function DatasetDashboard(){
   const { id } = useParams();
@@ -20,6 +20,7 @@ export default function DatasetDashboard(){
   const [insights, setInsights] = useState<any[]>([]);
   const [q,setQ] = useState("");
   const [qa,setQa] = useState<{answer?:string, rows?:any[], sql?:string}>({});
+  const [trend, setTrend] = useState<Array<{ name: string; actual: number; forecast?: number; t?: number }>>([]);
 
   useEffect(()=>{(async()=>{
     if(!id) return;
@@ -34,12 +35,18 @@ export default function DatasetDashboard(){
       // load existing insights
       const { data: existing } = await supabase.from("dataset_insights").select("*").eq("dataset_id", id).order("created_at", { ascending: false });
       setInsights(existing || []);
+
+      // Auto-generate a semantic model (idempotent) and load charts
+      try { await autoModel({ source: "dataset", datasetId: id! }); } catch {}
+      await load();
+      if (!existing || existing.length === 0) { try { await runInsights(); } catch {} }
     }
   })()},[id]);
 
   async function load(){
     if(!id) return; setLoading(true);
     try{
+      // KPI
       const k = await aggregateDataset({
         datasetId: id!,
         metrics: metrics,
@@ -48,6 +55,7 @@ export default function DatasetDashboard(){
       const row = Array.isArray(k.data?.rows) ? (k.data.rows as any[])[0] : null;
       setKpi(row);
 
+      // Distribution by selected dimension
       const dim = dims[0];
       if (dim){
         const byDim = await aggregateDataset({
@@ -59,6 +67,51 @@ export default function DatasetDashboard(){
         setSeries(arr.map(r => ({ name: r[dim] ?? "—", value: Number(r[key] ?? 0) })));
       } else {
         setSeries([]);
+      }
+
+      // Trend over time + simple forecast
+      if (dateField) {
+        const byDate = await aggregateDataset({
+          datasetId: id!,
+          metrics: metrics.includes("count") ? ["count"] : [metrics[0]],
+          dimensions: [dateField],
+          limit: 1000,
+        });
+        const arr = (byDate.data?.rows || []) as any[];
+        const key = metrics.includes("count") ? "count" : metrics[0];
+        const parsed = arr
+          .map((r:any) => ({ name: r[dateField] ?? "—", actual: Number(r[key] ?? 0), t: Date.parse(r[dateField]) }))
+          .filter((p:any) => !Number.isNaN(p.t))
+          .sort((a:any,b:any)=>a.t-b.t);
+        const values = parsed.map((p:any)=>p.actual);
+        if (parsed.length >= 3) {
+          const n = values.length;
+          const xs = values.map((_:number,i:number)=>i);
+          const sumX = xs.reduce((a:number,b:number)=>a+b,0);
+          const sumY = values.reduce((a:number,b:number)=>a+b,0);
+          const sumXY = xs.reduce((a:number, x:number, i:number)=> a + x*values[i], 0);
+          const sumX2 = xs.reduce((a:number,x:number)=>a+x*x,0);
+          const denom = n*sumX2 - sumX*sumX || 1;
+          const m = (n*sumXY - sumX*sumY) / denom;
+          const b = (sumY - m*sumX) / n;
+          const lastDate = new Date(parsed[parsed.length-1].t);
+          const stepMs = parsed.length>=2 ? Math.max(1, parsed[1].t - parsed[0].t) : 24*3600*1000;
+          const forecasts: Array<{ name: string; actual: number; forecast: number; t: number }> = [];
+          for (let i=1;i<=3;i++){
+            const idx = n + i - 1;
+            const f = m*idx + b;
+            const t = lastDate.getTime() + stepMs*i;
+            const name = new Date(t).toISOString().slice(0,10);
+            forecasts.push({ name, actual: 0, forecast: f, t });
+          }
+          const merged = parsed.map((p:any)=>({ name: p.name, actual: p.actual, forecast: undefined as number|undefined, t: p.t }))
+            .concat(forecasts);
+          setTrend(merged);
+        } else {
+          setTrend(parsed.map((p:any)=>({ name:p.name, actual:p.actual })));
+        }
+      } else {
+        setTrend([]);
       }
     } finally { setLoading(false); }
   }
@@ -120,6 +173,20 @@ export default function DatasetDashboard(){
           <button className="btn" disabled={disabled} onClick={()=>{ if(!loading) runInsights(); }}>Generate</button>
         </div>
       </section>
+
+      {trend.length > 0 && (
+        <Section title="מגמה לאורך זמן + תחזית">
+          <ChartFrame data={trend} render={(common)=> (
+            <LineChart data={trend}>
+              {common}
+              <Legend />
+              <Line type="monotone" dataKey="actual" name="Actual" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="forecast" name="Forecast" stroke="hsl(var(--warning))" strokeDasharray="4 4" strokeWidth={2} dot={false} />
+            </LineChart>
+          )}/>
+        </Section>
+      )}
+
 
       <Section title={dims[0] ? `Distribution by ${dims[0]}` : "Overview"}>
         <ChartFrame data={series} render={(common)=>(
