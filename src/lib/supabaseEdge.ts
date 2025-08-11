@@ -12,6 +12,16 @@ export async function callEdge<T = any>(
   name: EdgeName,
   opts?: CallEdgeOptions
 ): Promise<T> {
+  // Ensure we have a user session (anonymous if needed)
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    try {
+      await supabase.auth.signInAnonymously();
+    } catch (e) {
+      // continue — the detailed error catcher below will report missing anon config
+    }
+  }
+
   const { data, error } = await supabase.functions.invoke<T>(name, {
     body: opts?.body ?? {},
     headers: opts?.headers,
