@@ -240,7 +240,7 @@ const Library = () => {
                             <div className="text-sm text-muted-foreground">{dataset.row_count} שורות</div>
                           </div>
                           <Button asChild variant="outline" size="sm">
-                            <Link to={`/datasets/${dataset.id}`}>פתח</Link>
+                            <Link to={`/dashboards/dataset/${dataset.id}`}>פתח</Link>
                           </Button>
                         </div>
                       ))}
