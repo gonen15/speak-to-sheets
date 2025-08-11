@@ -22,7 +22,7 @@ export async function callEdge<T = any>(
     let details = "";
     try {
       const text = await ctx?.response?.text?.();
-      if (text) details = ` — ${text.substring(0, 500)}`;
+      if (text) details = ` — ${text.substring(0, 800)}`;
     } catch {}
     throw new Error(`${name} failed: ${error.message || "unknown"}${details}`);
   }
