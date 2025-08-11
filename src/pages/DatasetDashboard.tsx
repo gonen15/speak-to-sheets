@@ -150,15 +150,15 @@ export default function DatasetDashboard(){
         <div className="toolbar" style={{marginTop:8}}>
           <select className="input" value={dims[0]||""} onChange={(e)=>setDims([e.target.value||""])}>
             <option value="">(no dimension)</option>
-            {(meta?.columns||[]).map((c:string)=>(<option key={c} value={c}>{c}</option>))}
+            {(meta?.columns||[]).map((c:string,i:number)=>(<option key={`${c}-${i}`} value={c}>{c}</option>))}
           </select>
           <select className="input" value={metrics[0]||"count"} onChange={(e)=>setMetrics([e.target.value])}>
             <option value="count">count(*)</option>
-            {(meta?.columns||[]).map((c:string)=>(<option key={c} value={c}>{`sum(${c})`}</option>))}
+            {(meta?.columns||[]).map((c:string,i:number)=>(<option key={`m-${c}-${i}`} value={c}>{`sum(${c})`}</option>))}
           </select>
-          <select className="input" value={dateField||""} onChange={(e)=>setDateField(e.target.value||"")}>
+          <select className="input" value={dateField||""} onChange={(e)=>setDateField(e.target.value||"")}> 
             <option value="">(no date)</option>
-            {(meta?.columns||[]).map((c:string)=>(<option key={c} value={c}>{c}</option>))}
+            {(meta?.columns||[]).map((c:string,i:number)=>(<option key={`d-${c}-${i}`} value={c}>{c}</option>))}
           </select>
           <button className="btn" disabled={disabled} onClick={()=>{ if(!loading) load(); }}>Refresh</button>
         </div>

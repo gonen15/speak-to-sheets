@@ -49,13 +49,28 @@ export default function MasterDashboard(){
       const filters = buildFilters();
       const dateRange = dateFrom ? { from: dateFrom, to: null as any } : undefined;
 
-      const [tRes, dRes, depRes, sRes, cRes] = await Promise.all([
-        aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total','rows','customers'], dateRange }),
-        aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total'], dimensions: ['date'], dateRange }),
-        aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total'], dimensions: ['department'], dateRange, filters }),
-        aggregateRun({ source: 'master', refId: null as any, metrics: ['rows'], dimensions: ['status'], dateRange, filters }),
-        aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total'], dimensions: ['customer'], dateRange, filters }),
-      ]);
+      async function run(dateRangeArg?: any){
+        const [tRes, dRes, depRes, sRes, cRes] = await Promise.all([
+          aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total','rows','customers'], dateRange: dateRangeArg }),
+          aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total'], dimensions: ['date'], dateRange: dateRangeArg }),
+          aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total'], dimensions: ['department'], dateRange: dateRangeArg, filters }),
+          aggregateRun({ source: 'master', refId: null as any, metrics: ['rows'], dimensions: ['status'], dateRange: dateRangeArg, filters }),
+          aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total'], dimensions: ['customer'], dateRange: dateRangeArg, filters }),
+        ]);
+        return { tRes, dRes, depRes, sRes, cRes };
+      }
+
+      let { tRes, dRes, depRes, sRes, cRes } = await run(dateRange);
+
+      const isEmpty = (!Number(((tRes?.rows||[{}])[0]||{}).rows||0)
+        && (dRes?.rows||[]).length===0
+        && (depRes?.rows||[]).length===0
+        && (sRes?.rows||[]).length===0
+        && (cRes?.rows||[]).length===0);
+
+      if (dateRange && isEmpty){
+        ({ tRes, dRes, depRes, sRes, cRes } = await run(undefined));
+      }
 
       const tRow = (tRes?.rows || [])[0] || {};
       setTotals({ amount_total: Number(tRow.amount_total) || 0, rows: Number(tRow.rows) || 0, customers: Number(tRow.customers) || 0 });
