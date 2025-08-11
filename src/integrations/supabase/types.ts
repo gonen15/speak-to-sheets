@@ -721,6 +721,59 @@ export type Database = {
           },
         ]
       }
+      upload_job_items: {
+        Row: {
+          action: string | null
+          bytes: number | null
+          created_at: string | null
+          dataset_id: string | null
+          error: string | null
+          file_id: string | null
+          finished_at: string | null
+          id: number
+          job_id: string
+          mime: string | null
+          name: string
+          state: string
+        }
+        Insert: {
+          action?: string | null
+          bytes?: number | null
+          created_at?: string | null
+          dataset_id?: string | null
+          error?: string | null
+          file_id?: string | null
+          finished_at?: string | null
+          id?: number
+          job_id: string
+          mime?: string | null
+          name: string
+          state?: string
+        }
+        Update: {
+          action?: string | null
+          bytes?: number | null
+          created_at?: string | null
+          dataset_id?: string | null
+          error?: string | null
+          file_id?: string | null
+          finished_at?: string | null
+          id?: number
+          job_id?: string
+          mime?: string | null
+          name?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upload_job_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "upload_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       upload_job_logs: {
         Row: {
           ctx: Json | null
@@ -760,7 +813,9 @@ export type Database = {
         Row: {
           action: string | null
           created_at: string | null
+          current_file: string | null
           dataset_id: string | null
+          done_items: number | null
           error: string | null
           finished_at: string | null
           id: string
@@ -773,12 +828,15 @@ export type Database = {
           started_at: string | null
           stats: Json
           status: string
+          total_items: number | null
           user_id: string
         }
         Insert: {
           action?: string | null
           created_at?: string | null
+          current_file?: string | null
           dataset_id?: string | null
+          done_items?: number | null
           error?: string | null
           finished_at?: string | null
           id?: string
@@ -791,12 +849,15 @@ export type Database = {
           started_at?: string | null
           stats?: Json
           status?: string
+          total_items?: number | null
           user_id?: string
         }
         Update: {
           action?: string | null
           created_at?: string | null
+          current_file?: string | null
           dataset_id?: string | null
+          done_items?: number | null
           error?: string | null
           finished_at?: string | null
           id?: string
@@ -809,6 +870,7 @@ export type Database = {
           started_at?: string | null
           stats?: Json
           status?: string
+          total_items?: number | null
           user_id?: string
         }
         Relationships: []
