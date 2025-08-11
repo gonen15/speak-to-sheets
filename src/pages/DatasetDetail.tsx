@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PageMeta from "@/components/common/PageMeta";
@@ -12,6 +12,7 @@ const DatasetDetail = () => {
   const { t } = useI18n();
   const { id } = useParams();
   const { getDataset, syncDataset } = useDataStore();
+  const navigate = useNavigate();
   const ds = id ? getDataset(id) : undefined;
 
   // Filters state
@@ -23,6 +24,13 @@ const DatasetDetail = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'view';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+
+  // Redirect to visual dashboard if ID is a UUID (server dataset)
+  useEffect(() => {
+    if (id && !ds && /^[0-9a-fA-F-]{36}$/.test(id)) {
+      navigate(`/dashboards/dataset/${id}`, { replace: true });
+    }
+  }, [id, ds, navigate]);
 
   // Load saved filters for this dataset
   useEffect(() => {
