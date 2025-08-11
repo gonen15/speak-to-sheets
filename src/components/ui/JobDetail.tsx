@@ -33,6 +33,14 @@ interface UploadJobLog {
   ctx?: any;
 }
 
+interface UploadJobItem {
+  id: number;
+  name: string;
+  state: 'queued' | 'running' | 'done' | 'error';
+  action?: string;
+  error?: string;
+}
+
 interface JobDetailProps {
   jobId: string;
   onClose?: () => void;
@@ -42,11 +50,27 @@ interface JobDetailProps {
 export const JobDetail: React.FC<JobDetailProps> = ({ jobId, onClose, onNavigateToDataset }) => {
   const [job, setJob] = useState<UploadJob | null>(null);
   const [logs, setLogs] = useState<UploadJobLog[]>([]);
+  const [items, setItems] = useState<UploadJobItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     loadJobData();
+
+    const reloadItems = async () => {
+      const { data } = await supabase
+        .from("upload_job_items")
+        .select("*")
+        .eq("job_id", jobId)
+        .order("id", { ascending: true });
+      setItems(((data as any[]) || []).map((i: any) => ({
+        id: i.id,
+        name: i.name,
+        state: i.state,
+        action: i.action,
+        error: i.error,
+      })));
+    };
 
     // Set up real-time subscriptions
     const jobChannel = supabase
@@ -74,6 +98,18 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, onClose, onNavigate
         (payload) => {
           const newLog = payload.new as UploadJobLog;
           setLogs(prev => [...prev, newLog]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'upload_job_items',
+          filter: `job_id=eq.${jobId}`
+        },
+        () => {
+          reloadItems();
         }
       )
       .subscribe();
@@ -105,6 +141,23 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, onClose, onNavigate
 
       if (logsData) {
         setLogs(logsData);
+      }
+
+      // Load processed items
+      const { data: itemsData } = await supabase
+        .from("upload_job_items")
+        .select("*")
+        .eq("job_id", jobId)
+        .order("id", { ascending: true });
+
+      if (itemsData) {
+        setItems((itemsData as any[]).map((i: any) => ({
+          id: i.id,
+          name: i.name,
+          state: i.state,
+          action: i.action,
+          error: i.error,
+        })));
       }
     } catch (error: any) {
       toast({
@@ -264,6 +317,26 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, onClose, onNavigate
             </div>
           </div>
         )}
+
+        {/* Items */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">פריטים</h4>
+          <ScrollArea className="h-32 w-full border rounded-md p-2">
+            <div className="space-y-1">
+              {items.map((it) => (
+                <div key={it.id} className="text-xs flex justify-between items-center">
+                  <span className="truncate mr-2">{it.name}</span>
+                  <span className={`ml-2 ${it.state === 'error' ? 'text-red-600' : it.state === 'done' ? 'text-green-600' : it.state === 'running' ? 'text-blue-600' : 'text-gray-600'}`}>
+                    {it.state}{it.action ? ` • ${it.action}` : ''}
+                  </span>
+                </div>
+              ))}
+              {items.length === 0 && (
+                <p className="text-muted-foreground text-center py-2">אין פריטים</p>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
 
         {/* Logs */}
         <div className="space-y-2">
