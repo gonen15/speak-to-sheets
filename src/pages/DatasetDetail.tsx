@@ -1,18 +1,99 @@
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PageMeta from "@/components/common/PageMeta";
 import { useI18n } from "@/i18n/i18n";
 import { useDataStore } from "@/store/dataStore";
-
+import GlobalFilterBar from "@/components/ui/GlobalFilterBar";
+import { filtersSave, filtersGet } from "@/lib/supabaseEdge";
 const DatasetDetail = () => {
   const { t } = useI18n();
   const { id } = useParams();
   const { getDataset, syncDataset } = useDataStore();
   const ds = id ? getDataset(id) : undefined;
 
-  if (!ds) return <main className="container mx-auto py-10">Dataset not found</main>;
+  // Filters state
+  const [period, setPeriod] = useState<string>("current_quarter");
+  const [department, setDepartment] = useState<string>("all");
+  const [entity, setEntity] = useState<string>("");
+  const [filterLoading, setFilterLoading] = useState(false);
+  const [filteredRows, setFilteredRows] = useState<any[]>(ds?.rows ?? []);
 
+  useEffect(() => {
+    setFilteredRows(ds?.rows ?? []);
+  }, [ds]);
+
+  // Load saved filters for this dataset
+  useEffect(() => {
+    (async () => {
+      if (!ds?.id) return;
+      try {
+        const res = await filtersGet(`dataset:${ds.id}`);
+        const val = (res as any)?.value || {};
+        if (val.period) setPeriod(val.period);
+        if (val.department) setDepartment(val.department);
+        if (val.entity) setEntity(val.entity);
+      } catch {}
+    })();
+  }, [ds?.id]);
+
+  const applyFilters = () => {
+    if (!ds) return;
+    setFilterLoading(true);
+    try {
+      let base = [...ds.rows];
+      const hasDept = base.length && base[0] && 'department' in base[0];
+      const hasCust = base.length && base[0] && ('customer' in base[0] || 'client' in base[0]);
+      const hasDate = base.length && base[0] && 'date' in base[0];
+
+      if (department !== 'all' && hasDept) {
+        base = base.filter(r => String((r as any).department ?? '').toLowerCase() === department.toLowerCase());
+      }
+      if (entity && hasCust) {
+        const ent = entity.toLowerCase();
+        base = base.filter(r => {
+          const c1 = String((r as any).customer ?? '').toLowerCase();
+          const c2 = String((r as any).client ?? '').toLowerCase();
+          return c1.includes(ent) || c2.includes(ent);
+        });
+      }
+      if (hasDate) {
+        const now = new Date();
+        let from: Date | null = null;
+        if (period === '30d') from = new Date(now.getTime() - 30*24*60*60*1000);
+        else if (period === '90d') from = new Date(now.getTime() - 90*24*60*60*1000);
+        else if (period === 'ytd') from = new Date(now.getFullYear(), 0, 1);
+        else if (period === 'current_quarter') {
+          const q = Math.floor(now.getMonth()/3);
+          from = new Date(now.getFullYear(), q*3, 1);
+        }
+        if (from) {
+          base = base.filter(r => {
+            const d = new Date((r as any).date as any);
+            return !isNaN(d as any) && d >= from!;
+          });
+        }
+      }
+      setFilteredRows(base);
+    } finally {
+      setFilterLoading(false);
+    }
+  };
+
+  const resetFilters = () => {
+    setPeriod('current_quarter');
+    setDepartment('all');
+    setEntity('');
+    setFilteredRows(ds?.rows ?? []);
+  };
+
+  const saveFilters = async () => {
+    if (!ds) return;
+    await filtersSave({ key: `dataset:${ds.id}`, value: { period, department, entity } });
+  };
+
+  if (!ds) return <main className="container mx-auto py-10">Dataset not found</main>;
   return (
     <main className="container mx-auto py-10">
       <PageMeta title={`Dataset — ${ds.name}`} description="Preview imported data and sync." path={`/datasets/${ds.id}`} />
@@ -20,6 +101,19 @@ const DatasetDetail = () => {
         <h1 className="text-2xl font-semibold">{ds.name}</h1>
         <Button variant="outline" onClick={() => syncDataset(ds.id)} disabled={ds.status === "syncing" || !ds.sourceUrl}>{t("syncNow")}</Button>
       </div>
+      <GlobalFilterBar
+        period={period}
+        onPeriodChange={setPeriod}
+        department={department}
+        onDepartmentChange={setDepartment}
+        entity={entity}
+        onEntityChange={setEntity}
+        onApply={applyFilters}
+        onReset={resetFilters}
+        onSave={saveFilters}
+        loading={filterLoading}
+        className="mb-6"
+      />
 
       <Card>
         <CardHeader>
@@ -36,10 +130,10 @@ const DatasetDetail = () => {
                 </tr>
               </thead>
               <tbody>
-                {ds.rows.slice(0, 100).map((r, i) => (
+                {(filteredRows ?? ds.rows).slice(0, 100).map((r, i) => (
                   <tr key={i} className="border-b">
                     {ds.columns.map((c) => (
-                      <td key={c} className="py-2 pr-4">{String(r[c])}</td>
+                      <td key={c} className="py-2 pr-4">{String((r as any)[c])}</td>
                     ))}
                   </tr>
                 ))}
