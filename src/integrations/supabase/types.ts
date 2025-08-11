@@ -1184,6 +1184,10 @@ export type Database = {
           action: string
         }[]
       }
+      has_role: {
+        Args: { _user_id: string; _role: string }
+        Returns: boolean
+      }
       master_get: {
         Args: { p_row: Json; p_dataset: string; p_target: string }
         Returns: string

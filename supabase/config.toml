@@ -71,3 +71,6 @@ verify_jwt = true
 
 [functions.ingest-csv]
 verify_jwt = true
+
+[functions.ai-map]
+verify_jwt = true
