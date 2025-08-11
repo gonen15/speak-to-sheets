@@ -234,15 +234,18 @@ const Library = () => {
                   {sourceDatasets[source.id]?.length > 0 ? (
                     <div className="grid gap-2">
                       {sourceDatasets[source.id].map((dataset) => (
-                        <div key={dataset.id} className="flex justify-between items-center p-2 border rounded">
+                        <Link
+                          key={dataset.id}
+                          to={`/dashboards/dataset/${dataset.id}`}
+                          className="flex justify-between items-center p-2 border rounded hover:bg-accent/30 transition-colors"
+                          aria-label={`פתח דוח עבור ${dataset.name}`}
+                       >
                           <div>
                             <div className="font-medium">{dataset.name}</div>
                             <div className="text-sm text-muted-foreground">{dataset.row_count} שורות</div>
                           </div>
-                          <Button asChild variant="outline" size="sm">
-                            <Link to={`/dashboards/dataset/${dataset.id}`}>פתח</Link>
-                          </Button>
-                        </div>
+                          <Button variant="outline" size="sm">פתח</Button>
+                        </Link>
                       ))}
                     </div>
                   ) : (
