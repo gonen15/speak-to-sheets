@@ -1,13 +1,28 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import PageMeta from "@/components/common/PageMeta";
 import { useI18n } from "@/i18n/i18n";
 import { useDataStore } from "@/store/dataStore";
-
+import { supabase } from "@/integrations/supabase/client";
 const Dashboards = () => {
   const { t } = useI18n();
   const { dashboards } = useDataStore();
+
+  const [uploadedDatasets, setUploadedDatasets] = useState<Array<{ id: string; name: string; row_count: number }>>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const { data, error } = await supabase
+        .from("uploaded_datasets")
+        .select("id,name,row_count,created_at")
+        .order("created_at", { ascending: false });
+      if (!error && isMounted) setUploadedDatasets((data as any) || []);
+    })();
+    return () => { isMounted = false; };
+  }, []);
 
   return (
     <main className="container mx-auto py-10">
@@ -40,6 +55,27 @@ const Dashboards = () => {
           </Card>
         )}
       </div>
+
+      {uploadedDatasets.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-lg font-semibold mb-3">Uploaded datasets</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {uploadedDatasets.map((ds) => (
+              <Link to={`/dashboards/dataset/${ds.id}`} key={ds.id}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{ds.name}</CardTitle>
+                    <CardDescription>{ds.row_count ?? 0} rows</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">Open dataset dashboard</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </main>
   );
 };
