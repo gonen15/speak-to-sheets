@@ -65,3 +65,6 @@ verify_jwt = true
 
 [functions.insights-digest]
 verify_jwt = true
+
+[functions.upload-start]
+verify_jwt = true
