@@ -74,3 +74,6 @@ verify_jwt = true
 
 [functions.ai-map]
 verify_jwt = true
+
+[functions.ai-map-train]
+verify_jwt = true
