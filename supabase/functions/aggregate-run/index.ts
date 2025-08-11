@@ -78,13 +78,12 @@ Deno.serve(async (req)=>{
       const mkeys: string[] = (model?.metrics ? (model.metrics as any[]).map(m=>m?.key).filter(Boolean) : []);
       allowedMetrics = new Set(mkeys.map(cleanKey));
     } else if (rawPayload.source === 'master') {
-      // Admins only
+      // Require a valid session but no admin gate; function aggregates will respect allowed fields
       const { data: userRes } = await supabase.auth.getUser();
       const uid = userRes?.user?.id;
-      if (!uid) return new Response(JSON.stringify({ ok:false, error:'Unauthorized' }), { status:401, headers:{...H, 'Content-Type':'application/json'} });
-      const { data: isAdmin, error: eRole } = await supabase.rpc('has_role', { _user_id: uid, _role: 'admin' });
-      if (eRole) throw eRole;
-      if (!isAdmin) return new Response(JSON.stringify({ ok:false, error:'Forbidden' }), { status:403, headers:{...H, 'Content-Type':'application/json'} });
+      if (!uid) {
+        return new Response(JSON.stringify({ ok:false, stage:'auth', error:'Unauthorized' }), { status:200, headers:{...H, 'Content-Type':'application/json'} });
+      }
       // Fixed known fields of master_flat
       const masterDims = ['status','department','customer','source_name','amount','date'];
       allowedFields = new Set(masterDims);
