@@ -214,9 +214,9 @@ export function driveSyncStart(payload: {
   return callEdge<{ ok: boolean; jobId: string; total: number }>("drive-sync-start", { body: payload });
 }
 
-export function driveSyncStep(payload: {
-  jobId: string;
-  limit?: number;
-}) {
-  return callEdge<{ ok: boolean; job: any; items: any[] }>("drive-sync-step", { body: payload });
+export function driveSyncStep(payload: { jobId: string; batchSize?: number; replace?: boolean }) {
+  return callEdge<{ ok: boolean; job: any; items: Array<{ id: number; name: string; state: string; action?: string; error?: string }> }>(
+    "drive-sync-step",
+    { body: payload }
+  );
 }
