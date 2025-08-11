@@ -31,9 +31,6 @@ const AppHeader = () => {
           <NavLink to="/datasets" className={linkClass}>
             {t("datasets")}
           </NavLink>
-          <NavLink to="/model" className={linkClass}>
-            {t("model")}
-          </NavLink>
           <NavLink to="/dashboards/master" className={linkClass}>
             Master
           </NavLink>

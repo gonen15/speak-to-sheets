@@ -11,7 +11,7 @@ const Index = () => {
 
   return (
     <main>
-      <PageMeta title="CGC DataHub — Home" description="Modern BI on Google Sheets & CSV with semantic model, dashboards and ChatSQL." path="/" />
+      <PageMeta title="CGC DataHub — Home" description="Modern BI on Google Sheets & CSV with dashboards and GPT chat." path="/" />
       <section className="container mx-auto py-12">
         <div className="text-center max-w-3xl mx-auto space-y-4">
           <h1 className="text-4xl font-bold tracking-tight">{t("welcomeTitle")}</h1>
@@ -37,17 +37,6 @@ const Index = () => {
               </CardContent>
             </Card>
           </Link>
-          <Link to="/model">
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>{t("model")}</CardTitle>
-                <CardDescription>Dimensions & Metrics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">הגדרת מודל סמנטי ושמירה.</p>
-              </CardContent>
-            </Card>
-          </Link>
           <Link to="/dashboards">
             <Card className="h-full">
               <CardHeader>
@@ -56,17 +45,6 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">גרפים ופילטרים בסיסיים.</p>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link to="/chat">
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>{t("chat")}</CardTitle>
-                <CardDescription>Preview SQL לפני ריצה</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">שאלו בעברית או אנגלית.</p>
               </CardContent>
             </Card>
           </Link>

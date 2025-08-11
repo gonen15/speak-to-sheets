@@ -10,7 +10,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Datasets from "./pages/Datasets";
 import DatasetDetail from "./pages/DatasetDetail";
-import Model from "./pages/Model";
+
 import Dashboards from "./pages/Dashboards";
 import DashboardDetail from "./pages/DashboardDetail";
 import Settings from "./pages/Settings";
@@ -22,7 +22,7 @@ import DashboardView from "./pages/DashboardView";
 import { I18nProvider } from "./i18n/i18n";
 import { DataStoreProvider } from "./store/dataStore";
 import ExecutiveHub from "@/pages/ExecutiveHub";
-import ModelWizard from "@/pages/ModelWizard";
+
 import Library from "@/pages/Library";
 import MasterDashboard from "@/pages/MasterDashboard";
 import DepartmentsDashboard from "@/pages/DepartmentsDashboard";
@@ -53,8 +53,6 @@ const App = () => {
                   <Route path="/datasets" element={<Datasets />} />
                   <Route path="/datasets/:id" element={<DatasetDetail />} />
                   <Route path="/library" element={<Library />} />
-                  <Route path="/model" element={<Model />} />
-                  <Route path="/model/wizard" element={<ModelWizard />} />
                   <Route path="/dashboards" element={<Dashboards />} />
                   <Route path="/dashboards/sales" element={<SalesDashboard />} />
                   <Route path="/dashboards/pilot" element={<PilotDashboard />} />
