@@ -347,7 +347,7 @@ const Datasets = () => {
                 <div className="font-medium">{d.name}</div>
                 <div className="text-sm text-muted-foreground">{d.rows.length} rows</div>
               </div>
-              <Button asChild variant="outline"><Link to={`/datasets/${d.id}`}>Open</Link></Button>
+              <Button asChild variant="outline"><Link to={`/datasets/${d.id}?tab=view`}>Open</Link></Button>
             </li>
           ))}
         </ul>
