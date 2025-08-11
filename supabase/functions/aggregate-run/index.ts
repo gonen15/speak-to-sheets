@@ -173,14 +173,14 @@ Deno.serve(async (req)=>{
     const { data, error } = await supabase.rpc(rpc, rpcArgs).maybeSingle();
     if(error) throw error;
 
-    // Save to cache (TTL 5m)
-    const ttl = new Date(Date.now()+5*60*1000).toISOString();
+    // Save to cache (TTL 60m)
+    const ttl = new Date(Date.now()+60*60*1000).toISOString();
     await supabase.from("aggregate_cache").insert({
       signature, rows: data?.rows||[], sql: data?.sql||null, ttl_at: ttl
     });
 
     return new Response(JSON.stringify({ ok:true, rows:data?.rows||[], sql:data?.sql||null, cached:false }), { status:200, headers:{...H,"Content-Type":"application/json"}});
   }catch(e:any){
-    return new Response(JSON.stringify({ok:false,error:String(e?.message||e)}),{status:500,headers:{...H,"Content-Type":"application/json"}});
+    return new Response(JSON.stringify({ ok:false, stage:'aggregate-run', error:String(e?.message||e) }), { status:200, headers:{...H,"Content-Type":"application/json"} });
   }
 });

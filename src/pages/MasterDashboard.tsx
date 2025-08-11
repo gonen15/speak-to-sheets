@@ -32,6 +32,7 @@ export default function MasterDashboard(){
   const [byDate, setByDate] = useState<Array<{ date: string; amount_total: number }>>([]);
   const [byDepartment, setByDepartment] = useState<Array<{ department: string; amount_total: number }>>([]);
   const [byStatus, setByStatus] = useState<Array<{ status: string; rows: number }>>([]);
+  const [topClients, setTopClients] = useState<Array<{ customer: string; amount_total: number }>>([]);
 
   const dateFrom = useMemo(() => dateFromPeriod(period), [period]);
 
@@ -48,12 +49,12 @@ export default function MasterDashboard(){
       const filters = buildFilters();
       const dateRange = dateFrom ? { from: dateFrom, to: null as any } : undefined;
 
-      // 1) Totals
-      const [tRes, dRes, depRes, sRes] = await Promise.all([
+      const [tRes, dRes, depRes, sRes, cRes] = await Promise.all([
         aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total','rows','customers'], dateRange }),
         aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total'], dimensions: ['date'], dateRange }),
         aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total'], dimensions: ['department'], dateRange, filters }),
         aggregateRun({ source: 'master', refId: null as any, metrics: ['rows'], dimensions: ['status'], dateRange, filters }),
+        aggregateRun({ source: 'master', refId: null as any, metrics: ['amount_total'], dimensions: ['customer'], dateRange, filters }),
       ]);
 
       const tRow = (tRes?.rows || [])[0] || {};
@@ -70,6 +71,10 @@ export default function MasterDashboard(){
       const _byStatus = (sRes?.rows || []).map((r: any) => ({ status: r.status || '—', rows: Number(r.rows) || 0 }))
         .sort((a: any, b: any) => b.rows - a.rows);
       setByStatus(_byStatus);
+
+      const _byClients = (cRes?.rows || []).map((r:any)=>({ customer: r.customer || '—', amount_total: Number(r.amount_total)||0 }))
+        .sort((a:any,b:any)=> b.amount_total - a.amount_total);
+      setTopClients(_byClients);
     } catch (e: any) {
       setError(e?.message || String(e));
     } finally {
@@ -148,7 +153,24 @@ export default function MasterDashboard(){
           </div>
         </div>
 
-        <div className="julius-card p-4 md:col-span-2">
+        <div className="julius-card p-4">
+          <div className="julius-label mb-2">Top Clients</div>
+          <div className="overflow-auto">
+            <table className="min-w-full text-sm">
+              <thead><tr><th className="text-left py-2 pr-4">Customer</th><th className="text-left py-2 pr-4">Amount</th></tr></thead>
+              <tbody>
+                {topClients.slice(0,10).map((r) => (
+                  <tr key={r.customer} className="border-b">
+                    <td className="py-2 pr-4">{r.customer || '—'}</td>
+                    <td className="py-2 pr-4">{new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}).format(r.amount_total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="julius-card p-4">
           <div className="julius-label mb-2">By Status</div>
           <div className="overflow-auto">
             <table className="min-w-full text-sm">
