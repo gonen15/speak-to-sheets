@@ -35,6 +35,7 @@ const Datasets = () => {
     "https://docs.google.com/spreadsheets/d/1GsGdNfcSU3QtqtiKUkdQiC4XXRp1DT-W5j55DSHPTxg/edit?usp=drive_link"
   );
   const [pilotBusy, setPilotBusy] = React.useState(false);
+  const processNextDrive = async () => {
     if (pendingReplace || confirmOpen) return; // wait for decision
     if (driveQueue.length === 0) {
       const total = driveStats.imported + driveStats.replaced + driveStats.skipped;
