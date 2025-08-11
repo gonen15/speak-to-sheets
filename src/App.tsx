@@ -26,6 +26,7 @@ import ExecutiveHub from "@/pages/ExecutiveHub";
 import ModelWizard from "@/pages/ModelWizard";
 import Goals from "@/pages/Goals";
 import Library from "@/pages/Library";
+import MasterDashboard from "@/pages/MasterDashboard";
 import { ensureAuth } from "@/lib/ensureAuth";
 
 
@@ -57,6 +58,7 @@ const App = () => {
                   <Route path="/dashboards" element={<Dashboards />} />
                   <Route path="/dashboards/sales" element={<SalesDashboard />} />
                   <Route path="/dashboards/pilot" element={<PilotDashboard />} />
+                  <Route path="/dashboards/master" element={<MasterDashboard />} />
                   <Route path="/dashboards/dataset/:id" element={<DatasetDashboard />} />
                   <Route path="/dashboards/:id" element={<DashboardDetail />} />
                   <Route path="/dashboards/builder" element={<DashboardBuilder/>} />

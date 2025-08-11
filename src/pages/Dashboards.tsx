@@ -33,6 +33,17 @@ const Dashboards = () => {
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Link to={`/dashboards/master`}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Master Dashboard</CardTitle>
+              <CardDescription>Unified KPIs across all sources</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">Open central master dashboard</p>
+            </CardContent>
+          </Card>
+        </Link>
         {dashboards.map((d) => (
           <Link to={`/dashboards/${d.id}`} key={d.id}>
             <Card>

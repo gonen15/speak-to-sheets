@@ -161,7 +161,7 @@ export function filtersGet(key = 'global_filters') {
   return callEdge<{ ok: boolean; value: any }>("filters-get", { body: { key } });
 }
 
-export function aggregateRun(payload: { source:'dataset'|'monday'; refId:string; metrics:string[]; dimensions?:string[]; filters?:AggregateFilter[]; dateRange?:{field?:string|null; from?:string|null; to?:string|null}; limit?:number }){
+export function aggregateRun(payload: { source:'dataset'|'monday'|'master'; refId:string|null; metrics:string[]; dimensions?:string[]; filters?:AggregateFilter[]; dateRange?:{field?:string|null; from?:string|null; to?:string|null}; limit?:number }){
   return callEdge<{ ok:boolean; rows:any[]; sql?:string; cached?:boolean }>("aggregate-run", { body: payload });
 }
 
