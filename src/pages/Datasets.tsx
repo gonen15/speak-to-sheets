@@ -10,10 +10,10 @@ import { UploadProgress } from "@/components/ui/UploadProgress";
 import { normalizeFileName } from "@/lib/fileHash";
 import { useI18n } from "@/i18n/i18n";
 import { useDataStore } from "@/store/dataStore";
-import JobReportDrawer from "@/components/ui/JobReportDrawer";
+import DriveImportPanel from "@/components/ui/DriveImportPanel";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { datasetReplace, librarySave, libraryDelete, driveSync, uploadStart, ingestCsv, driveSyncStart, driveSyncStep } from "@/lib/supabaseEdge";
+import { datasetReplace, librarySave, libraryDelete, driveSync, uploadStart, ingestCsv } from "@/lib/supabaseEdge";
 
 const Datasets = () => {
   const { t } = useI18n();
@@ -29,11 +29,6 @@ const Datasets = () => {
   const [uploading, setUploading] = React.useState(false);
   const [uploadingDrive, setUploadingDrive] = React.useState(false);
   const [syncingMonday, setSyncingMonday] = React.useState(false);
-
-  // Drive job report drawer state
-  const [reportOpen, setReportOpen] = React.useState(false);
-  const [driveJob, setDriveJob] = React.useState<undefined | { id: string; status: string; progress: number; done_items?: number; total_items?: number; current_file?: string }>();
-  const [driveItems, setDriveItems] = React.useState<Array<{ id: number; name: string; state: "queued"|"running"|"done"|"error"; action?: string; error?: string }>>([]);
 
   const processNextDrive = async () => {
     if (pendingReplace || confirmOpen) return; // wait for decision
@@ -155,51 +150,6 @@ const Datasets = () => {
       setUploading(false);
     }
   };
-  const onImportDrive = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (uploadingDrive) return;
-
-    const form = e.currentTarget as HTMLFormElement & { folderUrl: { value: string } };
-    const folderUrl = form.folderUrl.value.trim();
-    if (!folderUrl) return;
-
-    setUploadingDrive(true);
-    setReportOpen(true);
-    setDriveItems([]);
-    setDriveJob(undefined);
-    toast({ title: "מתחבר לגוגל דרייב...", description: "סורק תיקייה" });
-
-    try {
-      const start = await driveSyncStart({ folderUrl });
-      if (!start?.ok) throw new Error("Start failed");
-      setDriveJob({ id: start.jobId, status: "running", progress: 0, done_items: 0, total_items: start.total });
-
-      const loop = async () => {
-        const step = await driveSyncStep({ jobId: start.jobId, batchSize: 10 });
-        if (!step?.ok) throw new Error("Step failed");
-        setDriveJob(step.job);
-        setDriveItems((prev) => [...prev, ...step.items.map(i => ({ ...i, state: i.state as "queued"|"running"|"done"|"error" }))]);
-
-        if (step.job.status !== "completed" && step.job.status !== "failed") {
-          setTimeout(loop, 2000);
-        } else {
-          const done = step.job.done_items ?? 0;
-          if (step.job.status === "completed") {
-            toast({ title: "סנכרון הושלם", description: `יובאו/עודכנו ${done} פריטים` });
-          } else {
-            toast({ title: "סנכרון נכשל", description: step.job?.error || "", variant: "destructive" as any });
-          }
-        }
-      };
-      loop();
-    } catch (err: any) {
-      toast({ title: "Import failed", description: String(err), variant: "destructive" as any });
-      setReportOpen(false);
-    } finally {
-      setUploadingDrive(false);
-    }
-  };
-
   const onSyncMonday = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (syncingMonday) return;
@@ -289,13 +239,6 @@ const Datasets = () => {
       <PageMeta title="CGC DataHub — Datasets" description="Import from Google Drive and sync CRM systems" path="/datasets" />
       <h1 className="text-2xl font-semibold mb-6">{t("datasets")}</h1>
 
-      {/* Live job report drawer */}
-      <JobReportDrawer
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        job={driveJob}
-        items={driveItems}
-      />
 
       <UploadProgress 
         onJobComplete={(job) => {
@@ -349,15 +292,7 @@ const Datasets = () => {
             <CardDescription>Paste a shared folder URL to import all Google Sheets and CSV files.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="space-y-3" onSubmit={onImportDrive}>
-              <div className="space-y-2">
-                <Label htmlFor="folderUrl">Folder URL</Label>
-                <Input id="folderUrl" name="folderUrl" placeholder="https://drive.google.com/drive/folders/11uueYvA4ZMKzmnHWTS4YDGVJKuBYFSD8" />
-              </div>
-              <Button type="submit" disabled={uploadingDrive}>
-                {uploadingDrive ? "מתחבר..." : "Import from Drive"}
-              </Button>
-            </form>
+            <DriveImportPanel />
           </CardContent>
         </Card>
 
