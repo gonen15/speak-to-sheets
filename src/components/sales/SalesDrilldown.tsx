@@ -49,12 +49,18 @@ export default function SalesDrilldown({ drilldownData, onBack, onDrillDown }: S
       value: context.value
     };
 
-    // Generate daily breakdown for the month
-    const dailyData = Array.from({ length: 30 }, (_, i) => ({
-      day: i + 1,
-      quantity: Math.floor(context.value * Math.random() * 0.1 + context.value * 0.02),
-      orders: Math.floor(Math.random() * 5 + 1)
-    }));
+    // Generate weekly breakdown for the month (4-5 weeks)
+    const weeklyData = Array.from({ length: 4 }, (_, i) => {
+      const weekValue = Math.floor(context.value / 4 * (0.8 + Math.random() * 0.4));
+      return {
+        week: `שבוע ${i + 1}`,
+        quantity: weekValue,
+        orders: Math.floor(weekValue / 50 + Math.random() * 3),
+        customers: Math.floor(Math.random() * 3 + 1)
+      };
+    });
+
+    const totalWeeklyQuantity = weeklyData.reduce((sum, week) => sum + week.quantity, 0);
 
     return (
       <div className="space-y-6">
@@ -66,39 +72,59 @@ export default function SalesDrilldown({ drilldownData, onBack, onDrillDown }: S
             hint={`יחידות שנמכרו ב${context.month}`}
           />
           <KPI
-            label="ימי מכירות"
-            value={dailyData.filter(d => d.quantity > 0).length}
+            label="שבועות פעילים"
+            value={weeklyData.filter(w => w.quantity > 0).length}
             format="number"
-            hint="ימים עם מכירות"
+            hint="שבועות עם מכירות"
           />
           <KPI
-            label="ממוצע יומי"
-            value={Math.round(context.value / 30)}
+            label="ממוצע שבועי"
+            value={Math.round(context.value / 4)}
             format="number"
-            hint="ממוצע יחידות ביום"
+            hint="ממוצע יחידות בשבוע"
           />
           <KPI
-            label="שיא יומי"
-            value={Math.max(...dailyData.map(d => d.quantity))}
+            label="שיא שבועי"
+            value={Math.max(...weeklyData.map(w => w.quantity))}
             format="number"
-            hint="השיא היומי החודש"
+            hint="השיא השבועי החודש"
           />
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>פירוט יומי - {context.month}</CardTitle>
+            <CardTitle>פירוט שבועי - {context.month}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dailyData.slice(0, 15)}>
+              <BarChart data={weeklyData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
+                <XAxis dataKey="week" />
                 <YAxis />
                 <Tooltip formatter={(value: number) => `${value.toLocaleString()} יח'`} />
                 <Bar dataKey="quantity" fill="#8884d8" />
               </BarChart>
             </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>סיכום שבועי</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {weeklyData.map((week, index) => (
+                <div key={index} className="flex justify-between items-center p-2 bg-muted/30 rounded">
+                  <span className="font-medium">{week.week}</span>
+                  <div className="flex gap-4 text-sm">
+                    <span>{week.quantity.toLocaleString()} יח'</span>
+                    <span>{week.orders} הזמנות</span>
+                    <span>{week.customers} לקוחות</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
