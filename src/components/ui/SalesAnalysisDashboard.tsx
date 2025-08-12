@@ -100,103 +100,134 @@ export default function SalesAnalysisDashboard() {
 
     console.log(`Analyzing ${validRows.length} valid rows from ${data.length} total rows`);
 
-    // Identify columns based on content patterns and Hebrew names
+    // Find column mappings based on the actual Hebrew structure
     const sampleRow = validRows[0];
     const columns = Object.keys(sampleRow);
     
-    // Map columns to semantic meaning
-    const customerCol = columns.find(col => 
-      col === 'שם לקוח' || 
-      col === 'תאריך עדכון:' || // This seems to contain customer names in the data
-      /לקוח|customer|client/i.test(col)
-    ) || 'תאריך עדכון:';
+    console.log("Available columns:", columns);
+    
+    // Find key columns based on content and Hebrew names
+    const customerIdCol = columns.find(col => 
+      col === 'מס. לקוח' || col.includes('לקוח') || col.includes('customer')
+    );
+    
+    const customerNameCol = columns.find(col => 
+      col === 'שם לקוח' || col === 'תאריך עדכון:' // Sometimes customer names are in this column
+    );
     
     const categoryCol = columns.find(col => 
-      col === 'קטגוריה' ||
-      col === '7' || // This contains category data
-      /category|קטגוריה|סוג|type/i.test(col)
-    ) || '7';
-    
-    const amountCols = columns.filter(col => 
-      col === 'סיכום 2024' || 
-      col === '31/12/24' ||
-      col === 'מעודכן' ||
-      col === '201' ||
-      /amount|sum|total|סכום|מחיר|עלות/i.test(col)
+      col === 'קטגוריה' || col === '7'
     );
+    
+    // Monthly columns for 2025 (1-7)
+    const monthlyCols = ['1', '2', '3', '4', '5', '6', '7'].filter(month => columns.includes(month));
+    
+    // Summary columns
+    const summary2024Col = columns.find(col => col === 'סיכום 2024' || col === 'מעודכן');
+    const summary2025Col = columns.find(col => col === 'סיכום 2025' || col === '201');
 
-    console.log("Identified columns:", {
-      customer: customerCol,
+    console.log("Column mapping:", {
+      customerId: customerIdCol,
+      customerName: customerNameCol,
       category: categoryCol,
-      amounts: amountCols
+      monthly: monthlyCols,
+      summary2024: summary2024Col,
+      summary2025: summary2025Col
     });
 
-    // Calculate KPIs
+    // Calculate metrics
     let totalRevenue = 0;
     const customers = new Set<string>();
-    const categories = new Map<string, number>();
+    const categories = new Map<string, { amount2024: number; amount2025: number; monthlyData: number[] }>();
     const customerTotals = new Map<string, { amount: number; orders: number }>();
+    const monthlyTotals = new Map<string, number>();
     let totalOrders = 0;
-    let totalItems = 0;
 
     validRows.forEach((row, index) => {
-      const customer = String(row[customerCol] || '').trim().replace(/[""]/g, '');
+      const customerId = String(row[customerIdCol] || '').trim();
+      const customerName = String(row[customerNameCol] || '').trim().replace(/[""]/g, '');
       const category = String(row[categoryCol] || '').trim();
       
-      // Skip header rows and empty rows
-      if (!customer || 
-          customer === 'שם לקוח' || 
-          customer === customerCol ||
+      // Skip header rows, summary rows, and empty rows
+      if (!customerId || 
+          customerId === 'מס. לקוח' || 
+          customerName === 'שם לקוח' ||
           category === 'קטגוריה' ||
-          customer.includes('יחס') ||
-          customer.includes('סיכום')) {
+          customerName.includes('יחס') ||
+          customerName.includes('סיכום') ||
+          category === '7' ||
+          !category) {
         return;
       }
 
-      // Extract amounts from multiple columns
-      let rowAmount = 0;
-      amountCols.forEach(col => {
-        const amountStr = String(row[col] || '').replace(/[₪,״""]/g, '').trim();
-        const amount = parseFloat(amountStr);
-        if (!isNaN(amount) && amount > 0) {
-          rowAmount += amount;
-        }
+      // Parse amounts
+      const summary2024 = parseFloat(String(row[summary2024Col] || '').replace(/[₪,״""]/g, '')) || 0;
+      const summary2025 = parseFloat(String(row[summary2025Col] || '').replace(/[₪,״""]/g, '')) || 0;
+      
+      // Parse monthly data for 2025
+      const monthlyAmounts = monthlyCols.map(month => {
+        const value = parseFloat(String(row[month] || '').replace(/[₪,״""]/g, '')) || 0;
+        return value;
       });
 
-      if (rowAmount > 0) {
-        totalRevenue += rowAmount;
+      // Only process if we have meaningful data
+      if (summary2024 > 0 || summary2025 > 0 || monthlyAmounts.some(amt => amt > 0)) {
+        totalRevenue += summary2025;
         totalOrders++;
         
-        if (customer) {
-          customers.add(customer);
-          const existing = customerTotals.get(customer) || { amount: 0, orders: 0 };
-          customerTotals.set(customer, {
-            amount: existing.amount + rowAmount,
+        // Track customers
+        if (customerName) {
+          customers.add(customerName);
+          const existing = customerTotals.get(customerName) || { amount: 0, orders: 0 };
+          customerTotals.set(customerName, {
+            amount: existing.amount + summary2025,
             orders: existing.orders + 1
           });
         }
 
-        if (category && category !== '') {
-          categories.set(category, (categories.get(category) || 0) + rowAmount);
+        // Track categories
+        if (category) {
+          const existing = categories.get(category) || { 
+            amount2024: 0, 
+            amount2025: 0, 
+            monthlyData: new Array(7).fill(0) 
+          };
+          
+          categories.set(category, {
+            amount2024: existing.amount2024 + summary2024,
+            amount2025: existing.amount2025 + summary2025,
+            monthlyData: existing.monthlyData.map((val, idx) => val + (monthlyAmounts[idx] || 0))
+          });
         }
+
+        // Track monthly totals
+        monthlyAmounts.forEach((amount, idx) => {
+          const monthKey = `month_${idx + 1}`;
+          monthlyTotals.set(monthKey, (monthlyTotals.get(monthKey) || 0) + amount);
+        });
       }
     });
 
-    // Generate charts data
-    const salesByStatus = [
-      { status: "מוצרים פעילים", amount: totalRevenue * 0.8, orders: Math.floor(totalOrders * 0.8), color: "#8884d8" },
-      { status: "מוצרים חדשים", amount: totalRevenue * 0.15, orders: Math.floor(totalOrders * 0.15), color: "#82ca9d" },
-      { status: "מוצרים מוגבלים", amount: totalRevenue * 0.05, orders: Math.floor(totalOrders * 0.05), color: "#ffc658" }
-    ];
-
+    // Generate charts data based on category analysis
     const salesByCategory = Array.from(categories.entries())
-      .sort(([,a], [,b]) => b - a)
+      .sort(([,a], [,b]) => b.amount2025 - a.amount2025)
       .slice(0, 8)
-      .map(([category, amount]) => ({
+      .map(([category, data]) => ({
         category,
-        amount,
-        percentage: (amount / totalRevenue) * 100
+        amount: data.amount2025,
+        percentage: (data.amount2025 / totalRevenue) * 100
       }));
+
+    // Generate monthly data from actual data
+    const monthNames = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי"];
+    const salesByMonth = monthNames.map((monthName, idx) => {
+      const monthKey = `month_${idx + 1}`;
+      return {
+        month: monthName,
+        amount: monthlyTotals.get(monthKey) || 0,
+        orders: Math.floor((monthlyTotals.get(monthKey) || 0) / 500) // Estimate orders
+      };
+    });
 
     const topCustomers = Array.from(customerTotals.entries())
       .sort(([,a], [,b]) => b.amount - a.amount)
@@ -207,24 +238,18 @@ export default function SalesAnalysisDashboard() {
         orders: data.orders
       }));
 
-    // Generate synthetic monthly data
-    const salesByMonth = [
-      { month: "ינואר", amount: totalRevenue * 0.08, orders: Math.floor(totalOrders * 0.08) },
-      { month: "פברואר", amount: totalRevenue * 0.09, orders: Math.floor(totalOrders * 0.09) },
-      { month: "מרץ", amount: totalRevenue * 0.12, orders: Math.floor(totalOrders * 0.12) },
-      { month: "אפריל", amount: totalRevenue * 0.10, orders: Math.floor(totalOrders * 0.10) },
-      { month: "מאי", amount: totalRevenue * 0.11, orders: Math.floor(totalOrders * 0.11) },
-      { month: "יוני", amount: totalRevenue * 0.15, orders: Math.floor(totalOrders * 0.15) },
-      { month: "יולי", amount: totalRevenue * 0.13, orders: Math.floor(totalOrders * 0.13) },
-      { month: "אוגוסט", amount: totalRevenue * 0.14, orders: Math.floor(totalOrders * 0.14) },
-      { month: "ספטמבר", amount: totalRevenue * 0.08, orders: Math.floor(totalOrders * 0.08) }
-    ];
-
     const topProducts = salesByCategory.slice(0, 5).map(cat => ({
       product: cat.category,
       amount: cat.amount,
       quantity: Math.floor(cat.amount / 50) // Estimate quantity
     }));
+
+    // Create status breakdown based on category performance
+    const salesByStatus = [
+      { status: "פראנוי (150g + 90g)", amount: salesByCategory.filter(c => c.category.includes('פראנוי')).reduce((sum, c) => sum + c.amount, 0), orders: Math.floor(totalOrders * 0.6), color: "#8884d8" },
+      { status: "מוצ'י", amount: salesByCategory.filter(c => c.category.includes('מוצ')).reduce((sum, c) => sum + c.amount, 0), orders: Math.floor(totalOrders * 0.25), color: "#82ca9d" },
+      { status: "באבל טי", amount: salesByCategory.filter(c => c.category.includes('באבל')).reduce((sum, c) => sum + c.amount, 0), orders: Math.floor(totalOrders * 0.15), color: "#ffc658" }
+    ];
 
     console.log("Analysis results:", {
       totalRevenue,
