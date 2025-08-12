@@ -27,6 +27,8 @@ export default function DatasetDashboard(){
   const [previewRows, setPreviewRows] = useState<any[]>([]);
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
   const [modelSaving, setModelSaving] = useState(false);
+  const [aiDash, setAiDash] = useState<Array<any>>([]);
+  const [aiBuilding, setAiBuilding] = useState(false);
   useEffect(()=>{(async()=>{
     if(!id) return;
     const { data, error } = await supabase.from("uploaded_datasets").select("*").eq("id", id).maybeSingle();
@@ -213,6 +215,50 @@ export default function DatasetDashboard(){
     } finally { setModelSaving(false); }
   }
 
+  async function buildAiDashboard(){
+    if(!id) return;
+    setAiBuilding(true);
+    try{
+      let dimension = dims[0];
+      if(!dimension){
+        const firstStr = (meta?.columns||[]).find((c:string)=>!/(amount|revenue|total|sum|cost|price|qty|quantity|units|value|sales|income|expense|num|count)/i.test(c));
+        dimension = firstStr || (meta?.columns||[])[0];
+      }
+      const metricKey = metrics.includes("count") ? "count" : (selectedMetrics[0] || metrics[0] || "count");
+      const kpiMetrics = selectedMetrics.length ? selectedMetrics : (metricKey === "count" ? ["count"] : [metricKey]);
+
+      const tasks: any[] = [
+        aggregateDataset({ datasetId: id!, metrics: kpiMetrics, dateRange: dateField ? { field: dateField } : undefined }),
+        aggregateDataset({ datasetId: id!, metrics: metricKey === "count" ? ["count"] : [metricKey], dimensions: [dimension], limit: 12 }),
+      ];
+      if (dateField) {
+        tasks.push(aggregateDataset({ datasetId: id!, metrics: metricKey === "count" ? ["count"] : [metricKey], dimensions: [dateField], limit: 1000 }));
+      }
+      const results = await Promise.all(tasks);
+
+      const widgets: any[] = [];
+      const kpiRes: any = results[0];
+      const kpiRow = Array.isArray(kpiRes?.data?.rows) ? kpiRes.data.rows[0] : {};
+      widgets.push({ type: "kpis", title: "סיכום", data: kpiRow, metrics: kpiMetrics });
+
+      const distRes: any = results[1];
+      const distArr = (distRes?.data?.rows || []) as any[];
+      const yKey = metricKey === "count" ? "count" : metricKey;
+      widgets.push({ type: "bar", title: `חלוקה לפי ${dimension}`, data: distArr.map((r:any)=>({ name: r[dimension] ?? "—", value: Number(r[yKey] ?? 0) })) });
+
+      if (dateField && results[2]) {
+        const trendRes: any = results[2];
+        const arr = (trendRes?.data?.rows || []) as any[];
+        const parsed = arr.map((r:any)=>({ name: r[dateField] ?? "—", value: Number(r[yKey] ?? 0), t: Date.parse(r[dateField]) }))
+          .filter((p:any)=>!Number.isNaN(p.t))
+          .sort((a:any,b:any)=>a.t-b.t);
+        widgets.push({ type: "line", title: `מגמה לפי ${dateField}`, data: parsed, xKey: "name", yKey: "value" });
+      }
+
+      setAiDash(widgets);
+    } finally { setAiBuilding(false); }
+  }
+
   // Realtime refresh on new rows
   useEffect(()=>{
     if(!id) return;
@@ -281,10 +327,51 @@ export default function DatasetDashboard(){
             <button className="btn" onClick={async()=>{ await autoModel({ source: "dataset", datasetId: id! }); await reloadModel(); await load(); }} disabled={disabled}>בנה מודל אוטומטי</button>
           </div>
         </div>
-      </Section>
+       </Section>
 
-      {trend.length > 0 && (
-        <Section title="מגמה לאורך זמן + תחזית">
+       <Section title="דשבורד AI">
+         <div className="card" style={{ padding: 12 }}>
+           <div className="toolbar" style={{ display:"flex", gap:8, alignItems:"center", justifyContent:"space-between" }}>
+             <div className="label">בנייה אוטומטית של KPI, מגמות וחלוקות לפי המודל</div>
+             <button className="btn" onClick={buildAiDashboard} disabled={disabled || aiBuilding}>{aiBuilding ? "בונה..." : "בנה דשבורד עם AI"}</button>
+           </div>
+           {aiDash.length > 0 && (
+             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap: 12, marginTop: 12 }}>
+               {aiDash.map((w:any, i:number) => (
+                 <div key={i} className="card" style={{ padding: 12 }}>
+                   <div className="label" style={{ marginBottom: 8 }}>{w.title}</div>
+                   {w.type === "kpis" && (
+                     <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap: 8 }}>
+                       {w.metrics.map((m:string)=> (
+                         <KPI key={m} label={m === "count" ? "Rows" : `Σ ${m}`} value={Number(w.data?.[m] ?? 0)} format="number" />
+                       ))}
+                     </div>
+                   )}
+                   {w.type === "bar" && (
+                     <ChartFrame data={w.data} render={(common)=>(
+                       <BarChart data={w.data}>
+                         {common}<Legend /><Bar dataKey="value" name="Value" radius={[6,6,0,0]} />
+                       </BarChart>
+                     )}/>
+                   )}
+                   {w.type === "line" && (
+                     <ChartFrame data={w.data} render={(common)=>(
+                       <LineChart data={w.data}>
+                         {common}
+                         <Legend />
+                         <Line type="monotone" dataKey="value" name="Value" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                       </LineChart>
+                     )}/>
+                   )}
+                 </div>
+               ))}
+             </div>
+           )}
+         </div>
+       </Section>
+
+       {trend.length > 0 && (
+         <Section title="מגמה לאורך זמן + תחזית">
           <ChartFrame data={trend} render={(common)=> (
             <LineChart data={trend}>
               {common}
