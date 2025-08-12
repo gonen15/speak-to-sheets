@@ -9,6 +9,7 @@ import { LineChart, Line, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { goalsSnapshot, insightsDigest } from "@/lib/supabaseEdge";
 import DataSummaryReport from "@/components/ui/DataSummaryReport";
+import SalesAnalysisDashboard from "@/components/ui/SalesAnalysisDashboard";
 
  type KPIMap = Record<string, { main:number; count:number; label:string }>;
  type Trend = { dept:string; series: Array<{date:string; value:number}> };
@@ -59,8 +60,8 @@ import DataSummaryReport from "@/components/ui/DataSummaryReport";
         <p className="text-muted-foreground">בחרו לוח ותקופה, ואז לחצו רענון.</p>
       </div>
 
-      {/* Data Summary from Uploaded Report */}
-      <DataSummaryReport />
+      {/* Advanced Sales Analysis Dashboard */}
+      <SalesAnalysisDashboard />
       
       <div className="my-8 border-t border-border"></div>
 

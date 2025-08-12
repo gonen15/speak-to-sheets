@@ -9,6 +9,7 @@ import GlobalFilterBar from "@/components/ui/GlobalFilterBar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { filtersSave, filtersGet } from "@/lib/supabaseEdge";
 import DataSummaryReport from "@/components/ui/DataSummaryReport";
+import SalesAnalysisDashboard from "@/components/ui/SalesAnalysisDashboard";
 const DatasetDetail = () => {
   const { t } = useI18n();
   const { id } = useParams();
@@ -126,7 +127,7 @@ const DatasetDetail = () => {
         </TabsList>
 
         <TabsContent value="summary">
-          <DataSummaryReport />
+          <SalesAnalysisDashboard />
         </TabsContent>
 
         <TabsContent value="view">
