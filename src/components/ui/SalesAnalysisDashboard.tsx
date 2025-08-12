@@ -7,18 +7,18 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 interface SalesData {
   // KPIs
-  totalRevenue: number;
-  totalOrders: number;
+  totalQuantity: number;
+  totalProducts: number;
   uniqueCustomers: number;
-  avgOrderValue: number;
-  totalItems: number;
+  avgQuantityPerProduct: number;
+  totalCategories: number;
   
   // Charts data
-  salesByMonth: Array<{ month: string; amount: number; orders: number }>;
-  salesByStatus: Array<{ status: string; amount: number; orders: number; color: string }>;
-  salesByCategory: Array<{ category: string; amount: number; percentage: number }>;
-  topCustomers: Array<{ customer: string; amount: number; orders: number }>;
-  topProducts: Array<{ product: string; amount: number; quantity: number }>;
+  salesByMonth: Array<{ month: string; quantity: number; products: number }>;
+  salesByStatus: Array<{ status: string; quantity: number; products: number; color: string }>;
+  salesByCategory: Array<{ category: string; quantity: number; percentage: number }>;
+  topCustomers: Array<{ customer: string; quantity: number; products: number }>;
+  topProducts: Array<{ product: string; quantity: number; categories: number }>;
 }
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#ff00ff'];
@@ -102,11 +102,11 @@ export default function SalesAnalysisDashboard() {
 
     if (validRows.length === 0) {
       return {
-        totalRevenue: 0,
-        totalOrders: 0,
+        totalQuantity: 0,
+        totalProducts: 0,
         uniqueCustomers: 0,
-        avgOrderValue: 0,
-        totalItems: 0,
+        avgQuantityPerProduct: 0,
+        totalCategories: 0,
         salesByMonth: [],
         salesByStatus: [],
         salesByCategory: [],
@@ -115,29 +115,29 @@ export default function SalesAnalysisDashboard() {
       };
     }
 
-    // Based on network requests, map the correct columns
+    // Based on network requests, map the correct columns for quantity data
     const customerIdCol = 'תאריך של היום'; // Contains customer IDs like "100019"
     const customerNameCol = 'תאריך עדכון:'; // Contains customer names
-    const categoryCol = '7'; // Contains categories like "פראנוי 150 גרם"
-    const amount2024Col = '31/12/24'; // 2024 summary amounts
-    const amount2025Col = '201'; // 2025 amounts  
-    const summaryCol = 'מעודכן'; // Additional amount data
+    const categoryCol = '7'; // Contains product categories like "פראנוי 150 גרם"
+    const quantity2024Col = '31/12/24'; // 2024 quantity data
+    const quantity2025Col = '201'; // 2025 quantity data  
+    const quantitySummaryCol = 'מעודכן'; // Additional quantity data
 
-    console.log("Using column mapping:", {
+    console.log("Using column mapping for quantity data:", {
       customerId: customerIdCol,
       customerName: customerNameCol,
       category: categoryCol,
-      amount2024: amount2024Col,
-      amount2025: amount2025Col,
-      summary: summaryCol
+      quantity2024: quantity2024Col,
+      quantity2025: quantity2025Col,
+      quantitySummary: quantitySummaryCol
     });
 
-    // Calculate metrics
-    let totalRevenue = 0;
+    // Calculate quantity metrics
+    let totalQuantity = 0;
     const customers = new Set<string>();
-    const categories = new Map<string, { amount2024: number; amount2025: number; count: number }>();
-    const customerTotals = new Map<string, { amount: number; orders: number }>();
-    let totalOrders = 0;
+    const categories = new Map<string, { quantity2024: number; quantity2025: number; count: number }>();
+    const customerTotals = new Map<string, { quantity: number; products: number }>();
+    let totalProducts = 0;
 
     validRows.forEach((row, index) => {
       const customerId = String(row[customerIdCol] || '').trim();
@@ -159,43 +159,43 @@ export default function SalesAnalysisDashboard() {
         return;
       }
 
-      // Parse amounts - handle the specific format in the data
-      const amount2024Str = String(row[amount2024Col] || '').replace(/[₪,״"""]/g, '').trim();
-      const amount2025Str = String(row[amount2025Col] || '').replace(/[₪,״"""]/g, '').trim();
-      const summaryStr = String(row[summaryCol] || '').replace(/[₪,״"""]/g, '').trim();
+      // Parse quantities - handle the specific format in the data
+      const quantity2024Str = String(row[quantity2024Col] || '').replace(/[,״"""]/g, '').trim();
+      const quantity2025Str = String(row[quantity2025Col] || '').replace(/[,״"""]/g, '').trim();
+      const quantitySummaryStr = String(row[quantitySummaryCol] || '').replace(/[,״"""]/g, '').trim();
       
-      const amount2024 = parseFloat(amount2024Str) || 0;
-      const amount2025 = parseFloat(amount2025Str) || 0;
-      const summaryAmount = parseFloat(summaryStr) || 0;
+      const quantity2024 = parseFloat(quantity2024Str) || 0;
+      const quantity2025 = parseFloat(quantity2025Str) || 0;
+      const quantitySummary = parseFloat(quantitySummaryStr) || 0;
       
-      // Use the most relevant amount (prefer 2024 summary data)
-      const mainAmount = amount2024 > 0 ? amount2024 : (summaryAmount > 0 ? summaryAmount : amount2025);
+      // Use the most relevant quantity (prefer 2024 summary data)
+      const mainQuantity = quantity2024 > 0 ? quantity2024 : (quantitySummary > 0 ? quantitySummary : quantity2025);
 
-      if (mainAmount > 0) {
-        totalRevenue += mainAmount;
-        totalOrders++;
+      if (mainQuantity > 0) {
+        totalQuantity += mainQuantity;
+        totalProducts++;
         
         // Track customers
         if (customerName) {
           customers.add(customerName);
-          const existing = customerTotals.get(customerName) || { amount: 0, orders: 0 };
+          const existing = customerTotals.get(customerName) || { quantity: 0, products: 0 };
           customerTotals.set(customerName, {
-            amount: existing.amount + mainAmount,
-            orders: existing.orders + 1
+            quantity: existing.quantity + mainQuantity,
+            products: existing.products + 1
           });
         }
 
         // Track categories
         if (category) {
           const existing = categories.get(category) || { 
-            amount2024: 0, 
-            amount2025: 0, 
+            quantity2024: 0, 
+            quantity2025: 0, 
             count: 0
           };
           
           categories.set(category, {
-            amount2024: existing.amount2024 + amount2024,
-            amount2025: existing.amount2025 + amount2025,
+            quantity2024: existing.quantity2024 + quantity2024,
+            quantity2025: existing.quantity2025 + quantity2025,
             count: existing.count + 1
           });
         }
@@ -203,8 +203,8 @@ export default function SalesAnalysisDashboard() {
     });
 
     console.log("Analysis results:", {
-      totalRevenue,
-      totalOrders,
+      totalQuantity,
+      totalProducts,
       uniqueCustomers: customers.size,
       categoriesCount: categories.size,
       topCustomers: Array.from(customerTotals.entries()).slice(0, 3)
@@ -212,53 +212,53 @@ export default function SalesAnalysisDashboard() {
 
     // Generate charts data based on category analysis
     const salesByCategory = Array.from(categories.entries())
-      .sort(([,a], [,b]) => b.amount2024 - a.amount2024)
+      .sort(([,a], [,b]) => b.quantity2024 - a.quantity2024)
       .slice(0, 8)
       .map(([category, data]) => ({
         category,
-        amount: data.amount2024,
-        percentage: totalRevenue > 0 ? (data.amount2024 / totalRevenue) * 100 : 0
+        quantity: data.quantity2024,
+        percentage: totalQuantity > 0 ? (data.quantity2024 / totalQuantity) * 100 : 0
       }));
 
     // Generate monthly data (synthetic for now, based on categories)
     const monthNames = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי"];
     const salesByMonth = monthNames.map((monthName, idx) => {
-      const monthAmount = totalRevenue * [0.1, 0.12, 0.14, 0.13, 0.15, 0.18, 0.18][idx];
+      const monthQuantity = totalQuantity * [0.1, 0.12, 0.14, 0.13, 0.15, 0.18, 0.18][idx];
       return {
         month: monthName,
-        amount: monthAmount,
-        orders: Math.floor(totalOrders * [0.1, 0.12, 0.14, 0.13, 0.15, 0.18, 0.18][idx])
+        quantity: monthQuantity,
+        products: Math.floor(totalProducts * [0.1, 0.12, 0.14, 0.13, 0.15, 0.18, 0.18][idx])
       };
     });
 
     const topCustomers = Array.from(customerTotals.entries())
-      .sort(([,a], [,b]) => b.amount - a.amount)
+      .sort(([,a], [,b]) => b.quantity - a.quantity)
       .slice(0, 10)
       .map(([customer, data]) => ({
         customer: customer.length > 30 ? customer.substring(0, 30) + '...' : customer,
-        amount: data.amount,
-        orders: data.orders
+        quantity: data.quantity,
+        products: data.products
       }));
 
     const topProducts = salesByCategory.slice(0, 5).map(cat => ({
       product: cat.category,
-      amount: cat.amount,
-      quantity: Math.floor(cat.amount / 100) // Estimate quantity
+      quantity: cat.quantity,
+      categories: 1 // Each product is one category
     }));
 
     // Create status breakdown based on category performance
     const salesByStatus = [
-      { status: "פראנוי (150g + 90g)", amount: salesByCategory.filter(c => c.category.includes('פראנוי')).reduce((sum, c) => sum + c.amount, 0), orders: Math.floor(totalOrders * 0.6), color: "#8884d8" },
-      { status: "מוצ'י", amount: salesByCategory.filter(c => c.category.includes('מוצ')).reduce((sum, c) => sum + c.amount, 0), orders: Math.floor(totalOrders * 0.25), color: "#82ca9d" },
-      { status: "באבל טי", amount: salesByCategory.filter(c => c.category.includes('באבל')).reduce((sum, c) => sum + c.amount, 0), orders: Math.floor(totalOrders * 0.15), color: "#ffc658" }
+      { status: "פראנוי (150g + 90g)", quantity: salesByCategory.filter(c => c.category.includes('פראנוי')).reduce((sum, c) => sum + c.quantity, 0), products: Math.floor(totalProducts * 0.6), color: "#8884d8" },
+      { status: "מוצ'י", quantity: salesByCategory.filter(c => c.category.includes('מוצ')).reduce((sum, c) => sum + c.quantity, 0), products: Math.floor(totalProducts * 0.25), color: "#82ca9d" },
+      { status: "באבל טי", quantity: salesByCategory.filter(c => c.category.includes('באבל')).reduce((sum, c) => sum + c.quantity, 0), products: Math.floor(totalProducts * 0.15), color: "#ffc658" }
     ];
 
     return {
-      totalRevenue,
-      totalOrders,
+      totalQuantity,
+      totalProducts,
       uniqueCustomers: customers.size,
-      avgOrderValue: totalRevenue / Math.max(totalOrders, 1),
-      totalItems: totalOrders,
+      avgQuantityPerProduct: totalQuantity / Math.max(totalProducts, 1),
+      totalCategories: categories.size,
       salesByMonth,
       salesByStatus,
       salesByCategory,
@@ -313,7 +313,7 @@ export default function SalesAnalysisDashboard() {
   return (
     <div className="space-y-6 mb-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">דוח ניתוח מכירות</h2>
+        <h2 className="text-2xl font-bold">דוח מכירות כמותיות</h2>
         <button 
           onClick={loadSalesData}
           className="julius-btn text-sm"
@@ -324,18 +324,18 @@ export default function SalesAnalysisDashboard() {
       </div>
       
       {/* Main KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <KPI
-          label="סך הכל מכירות"
-          value={salesData.totalRevenue}
-          format="currency"
-          hint="סך כל ההכנסות מהמכירות"
+          label="סך יחידות נמכרו"
+          value={salesData.totalQuantity}
+          format="number"
+          hint="סך כל היחידות שנמכרו"
         />
         <KPI
-          label="מספר הזמנות"
-          value={salesData.totalOrders}
+          label="מספר מוצרים"
+          value={salesData.totalProducts}
           format="number"
-          hint="סך כל ההזמנות שבוצעו"
+          hint="סך כל המוצרים הנמכרים"
         />
         <KPI
           label="לקוחות ייחודיים"
@@ -344,10 +344,16 @@ export default function SalesAnalysisDashboard() {
           hint="מספר לקוחות שונים"
         />
         <KPI
-          label="ממוצע להזמנה"
-          value={salesData.avgOrderValue}
-          format="currency"
-          hint="ממוצע סכום הזמנה"
+          label="ממוצע יחידות למוצר"
+          value={salesData.avgQuantityPerProduct}
+          format="number"
+          hint="ממוצע יחידות למוצר"
+        />
+        <KPI
+          label="מספר קטגוריות"
+          value={salesData.totalCategories}
+          format="number"
+          hint="מספר קטגוריות מוצרים"
         />
       </div>
 
@@ -355,7 +361,7 @@ export default function SalesAnalysisDashboard() {
         {/* Sales by Month */}
         <Card>
           <CardHeader>
-            <CardTitle>מכירות לפי חודש</CardTitle>
+            <CardTitle>מכירות כמותיות לפי חודש</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
@@ -363,8 +369,8 @@ export default function SalesAnalysisDashboard() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
-                <Tooltip formatter={(value: number) => `₪${value.toLocaleString()}`} />
-                <Bar dataKey="amount" fill="#8884d8" />
+                <Tooltip formatter={(value: number) => `${value.toLocaleString()} יח'`} />
+                <Bar dataKey="quantity" fill="#8884d8" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -384,14 +390,14 @@ export default function SalesAnalysisDashboard() {
                   cy="50%"
                   outerRadius={80}
                   fill="#8884d8"
-                  dataKey="amount"
+                  dataKey="quantity"
                   label={({ category, percentage }) => `${category} (${percentage.toFixed(1)}%)`}
                 >
                   {salesData.salesByCategory.slice(0, 6).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => `₪${value.toLocaleString()}`} />
+                <Tooltip formatter={(value: number) => `${value.toLocaleString()} יח'`} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -400,7 +406,7 @@ export default function SalesAnalysisDashboard() {
         {/* Top Customers */}
         <Card>
           <CardHeader>
-            <CardTitle>לקוחות מובילים</CardTitle>
+            <CardTitle>לקוחות מובילים (לפי כמות)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -408,10 +414,10 @@ export default function SalesAnalysisDashboard() {
                 <div key={idx} className="flex justify-between items-center py-2 border-b border-border/30 last:border-0">
                   <div className="flex-1">
                     <span className="text-sm text-foreground truncate block">{customer.customer}</span>
-                    <span className="text-xs text-muted-foreground">{customer.orders} הזמנות</span>
+                    <span className="text-xs text-muted-foreground">{customer.products} מוצרים</span>
                   </div>
                   <span className="text-sm font-medium text-right ml-4">
-                    ₪{customer.amount.toLocaleString()}
+                    {customer.quantity.toLocaleString()} יח'
                   </span>
                 </div>
               ))}
@@ -430,10 +436,10 @@ export default function SalesAnalysisDashboard() {
                 <div key={idx} className="flex justify-between items-center py-2 border-b border-border/30 last:border-0">
                   <div className="flex-1">
                     <span className="text-sm text-foreground">{product.product}</span>
-                    <div className="text-xs text-muted-foreground">כמות: {product.quantity}</div>
+                    <div className="text-xs text-muted-foreground">קטגוריות: {product.categories}</div>
                   </div>
                   <span className="text-sm font-medium text-right ml-4">
-                    ₪{product.amount.toLocaleString()}
+                    {product.quantity.toLocaleString()} יח'
                   </span>
                 </div>
               ))}
@@ -445,7 +451,7 @@ export default function SalesAnalysisDashboard() {
       {/* Sales by Status */}
       <Card>
         <CardHeader>
-          <CardTitle>פילוח לפי סטטוס מוצר</CardTitle>
+          <CardTitle>פילוח כמותי לפי סוג מוצר</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={200}>
@@ -453,8 +459,8 @@ export default function SalesAnalysisDashboard() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" />
               <YAxis dataKey="status" type="category" width={120} />
-              <Tooltip formatter={(value: number) => `₪${value.toLocaleString()}`} />
-              <Bar dataKey="amount" fill="#8884d8" />
+              <Tooltip formatter={(value: number) => `${value.toLocaleString()} יח'`} />
+              <Bar dataKey="quantity" fill="#8884d8" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
