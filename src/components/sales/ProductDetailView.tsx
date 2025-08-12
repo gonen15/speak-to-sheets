@@ -4,8 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { ProductData } from '@/types/sales';
-import { ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Users } from 'lucide-react';
 import KPI from '@/components/ui/KPI';
+import { useSalesData } from '@/hooks/useSalesData';
 
 interface ProductDetailViewProps {
   product: ProductData;
@@ -14,6 +15,9 @@ interface ProductDetailViewProps {
 }
 
 export default function ProductDetailView({ product, onBack, onDrillDown }: ProductDetailViewProps) {
+  const { getProductCustomerBreakdown } = useSalesData();
+  const customerBreakdown = getProductCustomerBreakdown(product.category);
+  
   const monthNames = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
   
   // Prepare comparative data
@@ -137,6 +141,48 @@ export default function ProductDetailView({ product, onBack, onDrillDown }: Prod
           </CardContent>
         </Card>
       </div>
+
+      {/* Customer Breakdown for this Product */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            פירוט לקוחות עבור {product.category}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Object.entries(customerBreakdown).map(([customerName, data]: [string, any]) => {
+              const julyQuantity = data.monthly2025[6] || 0; // יולי - אינדקס 6
+              const totalQuantity = data.total2025;
+              return (
+                <div 
+                  key={customerName}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                  onClick={() => onDrillDown && onDrillDown({
+                    type: 'customer-product-detail',
+                    customer: customerName,
+                    product: product.category,
+                    data: data
+                  })}
+                >
+                  <div className="flex-1">
+                    <p className="font-medium">{customerName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      יולי 2025: {julyQuantity.toLocaleString()} יח' • סה"כ: {totalQuantity.toLocaleString()} יח'
+                    </p>
+                  </div>
+                  <div className="text-left">
+                    <Badge variant="outline">
+                      {((totalQuantity / product.total2025) * 100).toFixed(1)}% מהמוצר
+                    </Badge>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Insights */}
       <Card>

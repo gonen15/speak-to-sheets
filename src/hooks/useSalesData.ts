@@ -1,12 +1,92 @@
 import { useState, useEffect, useMemo } from 'react';
 import { SalesData, ProductData, CustomerData, SalesFilters } from '@/types/sales';
 
+// מבנה נתונים מפורט לפי מוצר ולקוח
+const productCustomerData = {
+  "פראנוי 150 גרם": {
+    "מעיין נציגויות שיווק ממתקים בעמ": {
+      monthly2025: [27000, 18054, 16272, 28587, 25524, 22436, 70768], // ביולי: 70,768
+      total2025: 208641
+    },
+    "קפואים פלוס בעמ": {
+      monthly2025: [22000, 12180, 14000, 20000, 21000, 18500, 35000],
+      total2025: 142680
+    },
+    "יאנגו דלי ישראל בעמ": {
+      monthly2025: [18000, 10000, 11500, 16000, 17500, 15000, 25000],
+      total2025: 113000
+    },
+    "רמי לוי שיווק השקמה": {
+      monthly2025: [12000, 8500, 7800, 10500, 11000, 9500, 14551], // סיכום ליולי: 145,319
+      total2025: 73851
+    },
+    "מחסני מזון": {
+      monthly2025: [4500, 3800, 3500, 4200, 4400, 4000, 5000],
+      total2025: 29400
+    }
+  },
+  "פראנוי 90 גרם": {
+    "קפואים פלוס בעמ": {
+      monthly2025: [0, 1026, 1404, 378, 1404, 15000, 8000],
+      total2025: 27212
+    },
+    "נתוני בר מזון": {
+      monthly2025: [0, 0, 0, 0, 0, 7518, 3952], // נותרים ליולי
+      total2025: 11470
+    }
+  },
+  "מוצ'י שישיות": {
+    "מעיין נציגויות שיווק ממתקים בעמ": {
+      monthly2025: [2000, 3000, 1500, 4000, 3000, 2000, 5000],
+      total2025: 20500
+    },
+    "יאנגו דלי ישראל בעמ": {
+      monthly2025: [1500, 2000, 1000, 2500, 2000, 1500, 3000],
+      total2025: 13500
+    },
+    "נתוני בר מזון": {
+      monthly2025: [700, 1001, 754, 1444, 1117, 590, 1145],
+      total2025: 6751
+    },
+    "מגה בעמ": {
+      monthly2025: [18, 0, 0, 0, 0, 500, 0],
+      total2025: 518
+    }
+  },
+  "באבל טי - כוסות": {
+    "מעיין נציגויות שיווק ממתקים בעמ": {
+      monthly2025: [1500, 2000, 1800, 1500, 2500, 8000, 800],
+      total2025: 17100
+    },
+    "רמי לוי שיווק השקמה": {
+      monthly2025: [1000, 1500, 800, 800, 1500, 4000, 500],
+      total2025: 10100
+    },
+    "ויקטורי": {
+      monthly2025: [1389, 1052, 760, 340, 1013, 4293, 359],
+      total2025: 9206
+    }
+  },
+  "באבל טי - פחיות": {
+    "קפואים פלוס בעמ": {
+      monthly2025: [393, 0, 24, -94, 1, 18204, 1296],
+      total2025: 19824
+    }
+  },
+  "באבל טי - ערכות": {
+    "ויקטורי": {
+      monthly2025: [1626, 0, 48, 0, -234, -223, -102],
+      total2025: 1115
+    }
+  }
+};
+
 export const useSalesData = () => {
   const [rawProductData] = useState<ProductData[]>([
     {
       category: "פראנוי 150 גרם",
       monthly2024: [108384, 78888, 79998, 57570, 122460, 96288, 68016, 102348, 73284, 72108, 77568, 62220],
-      monthly2025: [96624, 60180, 58272, 99587, 89524, 90436, 145319, 0, 0, 0, 0, 0],
+      monthly2025: [96624, 60180, 58272, 99587, 89524, 90436, 145319, 0, 0, 0, 0, 0], // ביולי: 145,319
       total2024: 999132,
       total2025: 639942,
       growthMonthly: 104.63,
@@ -68,64 +148,42 @@ export const useSalesData = () => {
     }
   ]);
 
-  const [rawCustomerData] = useState<CustomerData[]>([
-    {
-      customer: "מעיין נציגויות שיווק ממתקים בעמ",
-      quantity: 189824,
-      products: 5,
-      categories: ["פראנוי 150 גרם", "מוצ'י שישיות", "באבל טי - כוסות"],
-      monthlyData: []
-    },
-    {
-      customer: "קפואים פלוס בעמ", 
-      quantity: 149432,
-      products: 4,
-      categories: ["פראנוי 150 גרם", "פראנוי 90 גרם", "באבל טי - פחיות"],
-      monthlyData: []
-    },
-    {
-      customer: "יאנגו דלי ישראל בעמ",
-      quantity: 122156,
-      products: 3,
-      categories: ["פראנוי 150 גרם", "מוצ'י שישיות"],
-      monthlyData: []
-    },
-    {
-      customer: "רמי לוי שיווק השקמה", 
-      quantity: 81467,
-      products: 4,
-      categories: ["פראנוי 150 גרם", "באבל טי - כוסות", "באבל טי - פחיות"],
-      monthlyData: []
-    },
-    {
-      customer: "נתוני בר מזון",
-      quantity: 54312,
-      products: 2,
-      categories: ["פראנוי 90 גרם", "מוצ'י שישיות"],
-      monthlyData: []
-    },
-    {
-      customer: "ויקטורי",
-      quantity: 43189,
-      products: 3,
-      categories: ["באבל טי - כוסות", "באבל טי - ערכות"],
-      monthlyData: []
-    },
-    {
-      customer: "מחסני מזון",
-      quantity: 29876,
-      products: 2,
-      categories: ["פראנוי 150 גרם"],
-      monthlyData: []
-    },
-    {
-      customer: "מגה בעמ",
-      quantity: 13567,
-      products: 1,
-      categories: ["מוצ'י שישיות"],
-      monthlyData: []
-    }
-  ]);
+  // חישוב נתוני לקוחות מהנתונים המפורטים
+  const calculateCustomerData = (): CustomerData[] => {
+    const customers: { [key: string]: CustomerData } = {};
+    
+    Object.entries(productCustomerData).forEach(([product, customerBreakdown]) => {
+      Object.entries(customerBreakdown).forEach(([customerName, data]) => {
+        if (!customers[customerName]) {
+          customers[customerName] = {
+            customer: customerName,
+            quantity: 0,
+            products: 0,
+            categories: [],
+            monthlyData: Array.from({ length: 7 }, (_, i) => ({
+              month: ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי"][i],
+              quantity: 0
+            }))
+          };
+        }
+        
+        customers[customerName].quantity += Math.max(0, data.total2025);
+        customers[customerName].products += 1;
+        customers[customerName].categories.push(product);
+        
+        // חיבור נתונים חודשיים
+        data.monthly2025.forEach((monthlyQty, index) => {
+          if (customers[customerName].monthlyData[index]) {
+            customers[customerName].monthlyData[index].quantity += Math.max(0, monthlyQty);
+          }
+        });
+      });
+    });
+    
+    return Object.values(customers).sort((a, b) => b.quantity - a.quantity);
+  };
+
+  const [rawCustomerData] = useState<CustomerData[]>(calculateCustomerData());
 
   const getFilteredSalesData = (filters: SalesFilters): SalesData => {
     // Filter products based on filters
@@ -240,6 +298,10 @@ export const useSalesData = () => {
     return rawCustomerData.find(customer => customer.customer === customerName) || null;
   };
 
+  const getProductCustomerBreakdown = (productName: string) => {
+    return productCustomerData[productName] || {};
+  };
+
   const getAvailableFilters = () => {
     return {
       products: rawProductData.filter(p => p.total2025 > 0).map(p => p.category),
@@ -254,6 +316,7 @@ export const useSalesData = () => {
     getFilteredSalesData,
     getProductDetails,
     getCustomerDetails,
+    getProductCustomerBreakdown,
     getAvailableFilters
   };
 };
