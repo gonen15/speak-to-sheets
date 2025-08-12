@@ -101,5 +101,9 @@ Deno.serve(async (req)=>{
       return new Response(JSON.stringify({ ok:true, model: payload }), { status:200, headers:{...cors,"Content-Type":"application/json"} });
     }
 
+    throw new Error("Unsupported source");
+  } catch(e: any) {
     const err = String(e?.message||e);
     return new Response(JSON.stringify({ ok:false, stage:"model-auto", error: err }), { status:200, headers:{...cors,"Content-Type":"application/json"} });
+  }
+});

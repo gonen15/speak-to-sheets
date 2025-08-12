@@ -8,6 +8,7 @@ import { JuliusSkeleton } from "@/components/ui/skeleton";
 import { LineChart, Line, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { goalsSnapshot, insightsDigest } from "@/lib/supabaseEdge";
+import DataSummaryReport from "@/components/ui/DataSummaryReport";
 
  type KPIMap = Record<string, { main:number; count:number; label:string }>;
  type Trend = { dept:string; series: Array<{date:string; value:number}> };
@@ -57,6 +58,11 @@ import { goalsSnapshot, insightsDigest } from "@/lib/supabaseEdge";
         <h1 className="text-3xl font-semibold tracking-tight mb-2">דשבורד הנהלה</h1>
         <p className="text-muted-foreground">בחרו לוח ותקופה, ואז לחצו רענון.</p>
       </div>
+
+      {/* Data Summary from Uploaded Report */}
+      <DataSummaryReport />
+      
+      <div className="my-8 border-t border-border"></div>
 
       {/* Global Filters */}
       <GlobalFilterBar
