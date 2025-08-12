@@ -186,6 +186,31 @@ export const useSalesData = () => {
   const [rawCustomerData] = useState<CustomerData[]>(calculateCustomerData());
 
   const getFilteredSalesData = (filters: SalesFilters): SalesData => {
+    // Calculate filtered data based on product and customer filters
+    const calculateFilteredQuantity = (productName: string, monthIndex?: number) => {
+      const productData = productCustomerData[productName];
+      if (!productData) return 0;
+      
+      let total = 0;
+      Object.entries(productData).forEach(([customerName, data]: [string, any]) => {
+        // Apply customer filter
+        if (filters.customers.length > 0 && !filters.customers.includes(customerName)) {
+          return;
+        }
+        
+        if (monthIndex !== undefined) {
+          // Get monthly data
+          const monthlyValue = data.monthly2025[monthIndex] || 0;
+          total += Math.max(0, monthlyValue);
+        } else {
+          // Get total data
+          total += Math.max(0, data.total2025);
+        }
+      });
+      
+      return total;
+    };
+
     // Filter products based on filters
     const filteredProducts = rawProductData.filter(product => {
       if (filters.products.length > 0 && !filters.products.includes(product.category)) {
@@ -194,19 +219,20 @@ export const useSalesData = () => {
       return product.total2025 > 0; // Only positive sales
     });
 
-    // Calculate totals
-    const totalQuantity2025 = filteredProducts.reduce((sum, product) => sum + Math.max(0, product.total2025), 0);
+    // Calculate totals with customer filters applied
+    const totalQuantity2025 = filteredProducts.reduce((sum, product) => {
+      return sum + calculateFilteredQuantity(product.category);
+    }, 0);
     
-    // Generate monthly data
+    // Generate monthly data with both product and customer filters
     const monthNames = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי"];
     const salesByMonth = monthNames.map((monthName, idx) => {
       const monthTotal = filteredProducts.reduce((sum, product) => {
-        const monthlyValue = product.monthly2025[idx] || 0;
-        return sum + Math.max(0, monthlyValue);
+        return sum + calculateFilteredQuantity(product.category, idx);
       }, 0);
       
       const activeProducts = filteredProducts.filter(product => 
-        (product.monthly2025[idx] || 0) > 0
+        calculateFilteredQuantity(product.category, idx) > 0
       ).length;
       
       return {
