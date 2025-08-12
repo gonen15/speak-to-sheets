@@ -220,6 +220,16 @@ const Datasets = () => {
       const action = result?.action as string | undefined;
       if (datasetId) {
         toast({ title: "הייבוא הושלם", description: action === "replaced" ? "הוחלף" : "נוצר" });
+        try {
+          const { ok, sourceId } = await librarySave({
+            kind: "csv_url",
+            name: desiredName,
+            config: { url: pilotUrl.trim(), sheetId: info.sheetId, gid: info.gid }
+          });
+          if (ok && sourceId) {
+            await supabase.from("data_source_datasets").insert({ source_id: sourceId, dataset_id: datasetId });
+          }
+        } catch {}
         navigate(`/dashboards/dataset/${datasetId}`);
       }
     } catch (err: any) {
@@ -291,12 +301,22 @@ const Datasets = () => {
 
 
       <UploadProgress 
-        onJobComplete={(job) => {
+        onJobComplete={async (job) => {
           if (job.dataset_id) {
-            navigate(`/datasets/${job.dataset_id}?tab=view`);
+            try {
+              const { ok, sourceId } = await librarySave({
+                kind: "upload",
+                name: job.name || "Upload",
+                config: { datasetId: job.dataset_id, originalName: job.name },
+              });
+              if (ok && sourceId) {
+                await supabase.from("data_source_datasets").insert({ source_id: sourceId, dataset_id: job.dataset_id });
+              }
+            } catch {}
+            navigate(`/dashboards/dataset/${job.dataset_id}`);
           }
         }}
-        onNavigateToDataset={(datasetId) => navigate(`/datasets/${datasetId}?tab=view`)}
+        onNavigateToDataset={(datasetId) => navigate(`/dashboards/dataset/${datasetId}`)}
       />
 
       <div className="grid md:grid-cols-2 gap-6">
