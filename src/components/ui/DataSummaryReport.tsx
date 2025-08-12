@@ -53,21 +53,23 @@ export default function DataSummaryReport() {
       // Analyze the data
       const totalRows = data.length;
       
-      // Try to find revenue/amount fields (Hebrew and English)
+      // Try to find revenue/amount fields - looking for exact Hebrew matches first
       const sampleRow = data[0];
       const amountFields = Object.keys(sampleRow).filter(key => 
-        /amount|revenue|value|price|sum|total|עלות|מחיר|סכום|הכנסות/i.test(key)
+        key === 'סה"כ ב-ש"ח' || key === 'סה״כ ב-ש״ח' || 
+        /amount|revenue|value|sum|total|עלות|הכנסות|סכום.*ש.*ח/i.test(key)
       );
       
-      // Try to find client/customer fields (Hebrew and English)
+      // Try to find client/customer fields - looking for exact Hebrew matches first
       const clientFields = Object.keys(sampleRow).filter(key => 
-        /client|customer|company|account|name|לקוח|חברה|שם/i.test(key)
+        key === 'שם לקוח' || key === 'לקוח' || 
+        /client|customer|company|account|name.*לקוח|חברה/i.test(key)
       );
       
-      // Try to find quantity fields
+      // Try to find quantity fields - looking for exact Hebrew matches first
       const quantityFields = Object.keys(sampleRow).filter(key => 
-        /quantity|amount|qty|count|כמות|מספר/i.test(key) && 
-        key !== amountFields[0] // Don't use the same field for amount and quantity
+        key === 'כמות' || 
+        (/quantity|qty|count|כמות|מספר/i.test(key) && key !== amountFields[0])
       );
 
       console.log("Available fields:", Object.keys(sampleRow));
