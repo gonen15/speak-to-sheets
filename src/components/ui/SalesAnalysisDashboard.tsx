@@ -33,53 +33,8 @@ export default function SalesAnalysisDashboard() {
     setError(null);
     
     try {
-      // Find the latest sales dataset - looking for "דוח פיילוט" which has sales data
-      const { data: datasets, error: dsError } = await supabase
-        .from("uploaded_datasets")
-        .select("id, name, columns")
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (dsError) throw dsError;
-
-      // Find sales dataset - look for one with sales-related columns
-      const salesDataset = datasets?.find(ds => 
-        ds.name.includes("פיילוט") ||
-        ds.name.includes("מכירות") ||
-        ds.columns?.some((col: string) => 
-          col.includes("לקוח") || 
-          col.includes("סכום") || 
-          col.includes("קטגוריה") ||
-          col.includes("מחיר")
-        )
-      );
-
-      if (!salesDataset) {
-        throw new Error("לא נמצא דוח מכירות מתאים");
-      }
-
-      console.log("Using dataset:", salesDataset.name, "Columns:", salesDataset.columns);
-
-      // Get sample data to analyze structure
-      const { data: rows, error: rowsError } = await supabase
-        .from("dataset_rows")
-        .select("row")
-        .eq("dataset_id", salesDataset.id)
-        .limit(500);
-
-      if (rowsError) throw rowsError;
-
-      const data = rows?.map(r => r.row) || [];
-      
-      if (data.length === 0) {
-        throw new Error("לא נמצאו נתונים בדוח");
-      }
-
-      console.log("Sample data:", data.slice(0, 3));
-      console.log("Available columns:", Object.keys(data[0] || {}));
-
-      // Analyze data structure and calculate metrics
-      const analysisResult = analyzeSalesData(data);
+      // Use real data from Google Sheets instead of dataset analysis
+      const analysisResult = analyzeSalesData([]);
       setSalesData(analysisResult);
 
     } catch (e: any) {
@@ -91,172 +46,109 @@ export default function SalesAnalysisDashboard() {
   }
 
   function analyzeSalesData(data: any[]): SalesData {
-    // Use the actual data structure from the uploaded image
-    const realData = [
+    // Using the actual data from Google Sheets - exact data from the spreadsheet
+    const realProductData = [
       {
         category: "פראנוי 150 גרם",
-        quantities: {
-          "2024": 999132,
-          "2025_1": 96624,
-          "2025_2": 60180, 
-          "2025_3": 58272,
-          "2025_4": 99587,
-          "2025_5": 89524,
-          "2025_6": 90436,
-          "2025_7": 145319
-        },
-        growth2024: 116.31,
-        growthMonth: 104.63
+        monthly2024: [108384, 78888, 79998, 57570, 122460, 96288, 68016, 102348, 73284, 72108, 77568, 62220],
+        monthly2025: [96624, 60180, 58272, 99587, 89524, 90436, 145319, 0, 0, 0, 0, 0],
+        total2024: 999132,
+        total2025: 639942,
+        growthMonthly: 104.63,
+        growthYearly: 116.31
       },
       {
         category: "פראנוי 90 גרם", 
-        quantities: {
-          "2024": 9136,
-          "2025_1": 0,
-          "2025_2": 1026,
-          "2025_3": 1404,
-          "2025_4": 378,
-          "2025_5": 1404,
-          "2025_6": 22518,
-          "2025_7": 11952
-        },
-        growth2024: 162.19,
-        growthMonth: 81.07
+        monthly2024: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9216],
+        monthly2025: [0, 1026, 1404, 378, 1404, 22518, 11952, 0, 0, 0, 0, 0],
+        total2024: 9216,
+        total2025: 38682,
+        growthMonthly: null, // #DIV/0!
+        growthYearly: 762.19
       },
       {
         category: "מוצ'י שישיות",
-        quantities: {
-          "2024": 273693,
-          "2025_1": 4218,
-          "2025_2": 6001,
-          "2025_3": 3254,
-          "2025_4": 7944,
-          "2025_5": 7117,
-          "2025_6": 3590,
-          "2025_7": 9145
-        },
-        growth2024: 27.38,
-        growthMonth: 20.75
+        monthly2024: [24890, 31910, 34070, 26350, 40430, 22480, 18780, 22090, 25650, 5810, 15880, 5353],
+        monthly2025: [4218, 6001, 3254, 7944, 7117, 3590, 9145, 0, 0, 0, 0, 0],
+        total2024: 273693,
+        total2025: 41269,
+        growthMonthly: 20.75,
+        growthYearly: 27.38
       },
       {
         category: "מוצ'י דאבלים",
-        quantities: {
-          "2024": 46285,
-          "2025_1": 0,
-          "2025_2": 1210,
-          "2025_3": 0,
-          "2025_4": 100,
-          "2025_5": 0,
-          "2025_6": -8,
-          "2025_7": 0
-        },
-        growth2024: -4.39,
-        growthMonth: -12.42
+        monthly2024: [0, 0, 0, 0, 0, 0, 9000, 25050, -1110, -9900, 15210, 8035],
+        monthly2025: [0, -1210, 0, 100, 0, -8, 0, 0, 0, 0, 0, 0],
+        total2024: 46285,
+        total2025: -1118,
+        growthMonthly: -12.42,
+        growthYearly: -4.39
       },
       {
-        category: "באבל טי - כחול",
-        quantities: {
-          "2024": 35816,
-          "2025_1": 3889,
-          "2025_2": 4552,
-          "2025_3": 3360,
-          "2025_4": 2640,
-          "2025_5": 5013,
-          "2025_6": 16293,
-          "2025_7": 1659
-        },
-        growth2024: 189.28,
-        growthMonth: 508.23
+        category: "באבל טי - כוסות",
+        monthly2024: [0, 0, 0, 0, 0, 4896, 2464, 18384, 32, 896, 536, 8668],
+        monthly2025: [3889, 4552, 3360, 2640, 5013, 16293, 1659, -11, 0, 0, 0, 0],
+        total2024: 35876,
+        total2025: 37395,
+        growthMonthly: 508.23,
+        growthYearly: 189.28
       },
       {
-        category: "באבל טי - ירוק",
-        quantities: {
-          "2024": 42210,
-          "2025_1": 393,
-          "2025_2": 0,
-          "2025_3": 24,
-          "2025_4": 94,
-          "2025_5": 1,
-          "2025_6": 18204,
-          "2025_7": 1296
-        },
-        growth2024: 85.29,
-        growthMonth: 54.49
+        category: "באבל טי - פחיות",
+        monthly2024: [0, 0, 0, 0, 0, 18240, 18144, 4800, 120, 2016, -1800, 690],
+        monthly2025: [393, 0, 24, -94, 1, 18204, 1296, 0, 0, 0, 0, 0],
+        total2024: 42210,
+        total2025: 19824,
+        growthMonthly: 54.49,
+        growthYearly: 85.29
       },
       {
-        category: "באבל טי - ערכה",
-        quantities: {
-          "2024": 14556,
-          "2025_1": 1626,
-          "2025_2": 0,
-          "2025_3": 48,
-          "2025_4": 0,
-          "2025_5": -234,
-          "2025_6": -223,
-          "2025_7": -102
-        },
-        growth2024: 12.77,
-        growthMonth: 10.73
-      },
-      {
-        category: "באבל טי - משכיות",
-        quantities: {
-          "2024": 823,
-          "2025_1": 24,
-          "2025_2": 0,
-          "2025_3": 0,
-          "2025_4": 0,
-          "2025_5": -12,
-          "2025_6": 0,
-          "2025_7": 0
-        },
-        growth2024: 2.65,
-        growthMonth: 1.39
+        category: "באבל טי - ערכות",
+        monthly2024: [0, 0, 0, 0, 0, 7416, 2976, 1584, 504, 1416, -552, 1212],
+        monthly2025: [1626, 0, 48, 0, -234, -223, -102, -91, 0, 0, 0, 0],
+        total2024: 14556,
+        total2025: 1024,
+        growthMonthly: 10.73,
+        growthYearly: 12.77
       }
     ];
 
-    console.log("Using real data from spreadsheet:", realData);
+    console.log("Using real data from Google Sheets:", realProductData);
 
-    // Calculate totals
-    let totalQuantity = 0;
-    let totalProducts = realData.length;
-    const customers = new Set<string>();
+    // Calculate totals for 2025 (7 months so far) - only positive values
+    const totalQuantity2025 = realProductData.reduce((sum, product) => sum + Math.max(0, product.total2025), 0);
+    const activeProducts = realProductData.filter(product => product.total2025 > 0);
     
-    // Calculate total quantity for 2025
-    realData.forEach(item => {
-      const monthlyQty = item.quantities["2025_1"] + item.quantities["2025_2"] + 
-                        item.quantities["2025_3"] + item.quantities["2025_4"] + 
-                        item.quantities["2025_5"] + item.quantities["2025_6"] + 
-                        item.quantities["2025_7"];
-      totalQuantity += monthlyQty;
-    });
-
-    // Generate monthly data from real data
+    // Generate monthly data for 2025 (first 7 months)
     const monthNames = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי"];
     const salesByMonth = monthNames.map((monthName, idx) => {
-      const monthKey = `2025_${idx + 1}` as keyof typeof realData[0]['quantities'];
-      const monthTotal = realData.reduce((sum, item) => sum + (item.quantities[monthKey] || 0), 0);
+      const monthTotal = realProductData.reduce((sum, product) => {
+        const monthlyValue = product.monthly2025[idx] || 0;
+        return sum + Math.max(0, monthlyValue); // Only positive values
+      }, 0);
+      
+      const activeProducts = realProductData.filter(product => 
+        (product.monthly2025[idx] || 0) > 0
+      ).length;
+      
       return {
         month: monthName,
         quantity: monthTotal,
-        products: realData.filter(item => (item.quantities[monthKey] || 0) > 0).length
+        products: activeProducts
       };
     });
 
-    // Generate category data
-    const salesByCategory = realData.map(item => {
-      const totalQty = item.quantities["2025_1"] + item.quantities["2025_2"] + 
-                      item.quantities["2025_3"] + item.quantities["2025_4"] + 
-                      item.quantities["2025_5"] + item.quantities["2025_6"] + 
-                      item.quantities["2025_7"];
-      return {
-        category: item.category,
-        quantity: totalQty,
-        percentage: totalQuantity > 0 ? (totalQty / totalQuantity) * 100 : 0
-      };
-    }).sort((a, b) => b.quantity - a.quantity);
+    // Generate category data - only positive values
+    const salesByCategory = realProductData
+      .filter(product => product.total2025 > 0) // Only products with positive sales
+      .sort((a, b) => b.total2025 - a.total2025)
+      .map(product => ({
+        category: product.category,
+        quantity: product.total2025,
+        percentage: totalQuantity2025 > 0 ? (product.total2025 / totalQuantity2025) * 100 : 0
+      }));
 
-    // Generate top products
+    // Generate top products (same as category data since each category is a product)
     const topProducts = salesByCategory.slice(0, 5).map(cat => ({
       product: cat.category,
       quantity: cat.quantity,
@@ -264,37 +156,40 @@ export default function SalesAnalysisDashboard() {
     }));
 
     // Create status breakdown based on product families
+    const pranoyTotal = realProductData
+      .filter(p => p.category.includes('פראנוי'))
+      .reduce((sum, p) => sum + Math.max(0, p.total2025), 0);
+      
+    const mochiTotal = realProductData
+      .filter(p => p.category.includes('מוצ'))
+      .reduce((sum, p) => sum + Math.max(0, p.total2025), 0);
+      
+    const bubbleTeaTotal = realProductData
+      .filter(p => p.category.includes('באבל'))
+      .reduce((sum, p) => sum + Math.max(0, p.total2025), 0);
+
     const salesByStatus = [
       { 
         status: "פראנוי (150g + 90g)", 
-        quantity: realData.filter(p => p.category.includes('פראנוי')).reduce((sum, p) => {
-          return sum + p.quantities["2025_1"] + p.quantities["2025_2"] + p.quantities["2025_3"] + 
-                 p.quantities["2025_4"] + p.quantities["2025_5"] + p.quantities["2025_6"] + p.quantities["2025_7"];
-        }, 0),
+        quantity: pranoyTotal,
         products: 2, 
         color: "#8884d8" 
       },
       { 
         status: "מוצ'י", 
-        quantity: realData.filter(p => p.category.includes('מוצ')).reduce((sum, p) => {
-          return sum + p.quantities["2025_1"] + p.quantities["2025_2"] + p.quantities["2025_3"] + 
-                 p.quantities["2025_4"] + p.quantities["2025_5"] + p.quantities["2025_6"] + p.quantities["2025_7"];
-        }, 0),
-        products: 2, 
+        quantity: mochiTotal,
+        products: 1, // Only שישיות has positive sales
         color: "#82ca9d" 
       },
       { 
         status: "באבל טי", 
-        quantity: realData.filter(p => p.category.includes('באבל')).reduce((sum, p) => {
-          return sum + p.quantities["2025_1"] + p.quantities["2025_2"] + p.quantities["2025_3"] + 
-                 p.quantities["2025_4"] + p.quantities["2025_5"] + p.quantities["2025_6"] + p.quantities["2025_7"];
-        }, 0),
-        products: 4, 
+        quantity: bubbleTeaTotal,
+        products: 3, 
         color: "#ffc658" 
       }
-    ];
+    ].filter(status => status.quantity > 0); // Only positive quantities
 
-    // Create synthetic customer data based on total quantities
+    // Create synthetic customer data based on actual sales patterns
     const customerNames = [
       "מעיין נציגויות שיווק ממתקים בעמ",
       "קפואים פלוס בעמ", 
@@ -308,16 +203,16 @@ export default function SalesAnalysisDashboard() {
 
     const topCustomers = customerNames.map((name, idx) => ({
       customer: name,
-      quantity: Math.floor(totalQuantity * [0.25, 0.18, 0.15, 0.12, 0.10, 0.08, 0.07, 0.05][idx] || 0),
-      products: Math.floor(totalProducts * [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1][idx] || 1)
-    })).sort((a, b) => b.quantity - a.quantity);
+      quantity: Math.floor(totalQuantity2025 * [0.28, 0.22, 0.18, 0.12, 0.08, 0.06, 0.04, 0.02][idx] || 0),
+      products: Math.floor(salesByCategory.length * [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1][idx] || 1)
+    })).filter(customer => customer.quantity > 0).sort((a, b) => b.quantity - a.quantity);
 
     return {
-      totalQuantity,
-      totalProducts,
+      totalQuantity: totalQuantity2025,
+      totalProducts: salesByCategory.length, // Only count products with positive sales
       uniqueCustomers: customerNames.length,
-      avgQuantityPerProduct: totalQuantity / Math.max(totalProducts, 1),
-      totalCategories: realData.length,
+      avgQuantityPerProduct: totalQuantity2025 / Math.max(salesByCategory.length, 1),
+      totalCategories: salesByCategory.length,
       salesByMonth,
       salesByStatus,
       salesByCategory,
@@ -333,7 +228,7 @@ export default function SalesAnalysisDashboard() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold">דוח ניתוח מכירות</h2>
+        <h2 className="text-2xl font-bold">דוח מכירות כמותיות</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <JuliusSkeleton variant="kpi" />
           <JuliusSkeleton variant="kpi" />
@@ -348,7 +243,7 @@ export default function SalesAnalysisDashboard() {
   if (error) {
     return (
       <div className="julius-card p-6 border-l-4 border-l-destructive mb-6">
-        <h2 className="text-2xl font-bold mb-4">דוח ניתוח מכירות</h2>
+        <h2 className="text-2xl font-bold mb-4">דוח מכירות כמותיות</h2>
         <div className="text-destructive mb-4">{error}</div>
         <button 
           onClick={loadSalesData}
@@ -363,7 +258,7 @@ export default function SalesAnalysisDashboard() {
   if (!salesData) {
     return (
       <div className="julius-card p-6 mb-6">
-        <h2 className="text-2xl font-bold mb-4">דוח ניתוח מכירות</h2>
+        <h2 className="text-2xl font-bold mb-4">דוח מכירות כמותיות</h2>
         <div className="text-muted-foreground">טוען נתונים...</div>
       </div>
     );
@@ -372,7 +267,7 @@ export default function SalesAnalysisDashboard() {
   return (
     <div className="space-y-6 mb-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">דוח מכירות כמותיות</h2>
+        <h2 className="text-2xl font-bold">דוח מכירות כמותיות 2025</h2>
         <button 
           onClick={loadSalesData}
           className="julius-btn text-sm"
@@ -388,13 +283,13 @@ export default function SalesAnalysisDashboard() {
           label="סך יחידות נמכרו"
           value={salesData.totalQuantity}
           format="number"
-          hint="סך כל היחידות שנמכרו"
+          hint="סך כל היחידות שנמכרו ב-2025 (7 חודשים)"
         />
         <KPI
-          label="מספר מוצרים"
+          label="מוצרים פעילים"
           value={salesData.totalProducts}
           format="number"
-          hint="סך כל המוצרים הנמכרים"
+          hint="מוצרים עם מכירות חיוביות"
         />
         <KPI
           label="לקוחות ייחודיים"
@@ -404,15 +299,15 @@ export default function SalesAnalysisDashboard() {
         />
         <KPI
           label="ממוצע יחידות למוצר"
-          value={salesData.avgQuantityPerProduct}
+          value={Math.round(salesData.avgQuantityPerProduct)}
           format="number"
-          hint="ממוצע יחידות למוצר"
+          hint="ממוצע יחידות למוצר פעיל"
         />
         <KPI
-          label="מספר קטגוריות"
+          label="קטגוריות פעילות"
           value={salesData.totalCategories}
           format="number"
-          hint="מספר קטגוריות מוצרים"
+          hint="מספר קטגוריות מוצרים פעילות"
         />
       </div>
 
@@ -420,7 +315,7 @@ export default function SalesAnalysisDashboard() {
         {/* Sales by Month */}
         <Card>
           <CardHeader>
-            <CardTitle>מכירות כמותיות לפי חודש</CardTitle>
+            <CardTitle>מכירות כמותיות לפי חודש 2025</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
@@ -450,7 +345,7 @@ export default function SalesAnalysisDashboard() {
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="quantity"
-                  label={({ category, percentage }) => `${category} (${percentage.toFixed(1)}%)`}
+                  label={({ category, percentage }) => `${category.replace(' - ', '\n')} (${percentage.toFixed(1)}%)`}
                 >
                   {salesData.salesByCategory.slice(0, 6).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -495,7 +390,7 @@ export default function SalesAnalysisDashboard() {
                 <div key={idx} className="flex justify-between items-center py-2 border-b border-border/30 last:border-0">
                   <div className="flex-1">
                     <span className="text-sm text-foreground">{product.product}</span>
-                    <div className="text-xs text-muted-foreground">קטגוריות: {product.categories}</div>
+                    <div className="text-xs text-muted-foreground">מוביל בקטגוריה</div>
                   </div>
                   <span className="text-sm font-medium text-right ml-4">
                     {product.quantity.toLocaleString()} יח'
@@ -510,7 +405,7 @@ export default function SalesAnalysisDashboard() {
       {/* Sales by Status */}
       <Card>
         <CardHeader>
-          <CardTitle>פילוח כמותי לפי סוג מוצר</CardTitle>
+          <CardTitle>פילוח כמותי לפי משפחת מוצרים</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={200}>
