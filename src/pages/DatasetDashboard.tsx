@@ -8,6 +8,7 @@ import { BarChart, Bar, Legend, LineChart, Line } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { aggregateDataset, generateInsights, nlQuery, autoModel, aiMap } from "@/lib/supabaseEdge";
 import DataGrid from "@/components/ui/DataGrid";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function DatasetDashboard(){
   const { id } = useParams();
@@ -29,6 +30,7 @@ export default function DatasetDashboard(){
   const [modelSaving, setModelSaving] = useState(false);
   const [aiDash, setAiDash] = useState<Array<any>>([]);
   const [aiBuilding, setAiBuilding] = useState(false);
+  const { toast } = useToast();
   useEffect(()=>{(async()=>{
     if(!id) return;
     const { data, error } = await supabase.from("uploaded_datasets").select("*").eq("id", id).maybeSingle();
@@ -256,6 +258,26 @@ export default function DatasetDashboard(){
       }
 
       setAiDash(widgets);
+
+      // Save dashboard so it persists and appears globally
+      try {
+        const res = await supabase.functions.invoke('dashboard', {
+          body: {
+            action: 'save',
+            dashboard: { name: `AI Dashboard — ${meta?.name || 'Dataset'}`, source: 'dataset', ref_id: id },
+            widgets
+          }
+        });
+        const ok = (res.data as any)?.ok;
+        if (ok) {
+          toast({ title: 'נשמר', description: 'הדשבורד נשמר לספרייה' });
+        } else {
+          const err = (res.data as any)?.error || 'Save failed';
+          toast({ variant: 'destructive', title: 'שגיאה בשמירת דשבורד', description: String(err) });
+        }
+      } catch (e:any) {
+        toast({ variant: 'destructive', title: 'שגיאה בשמירת דשבורד', description: String(e?.message||e) });
+      }
     } finally { setAiBuilding(false); }
   }
 

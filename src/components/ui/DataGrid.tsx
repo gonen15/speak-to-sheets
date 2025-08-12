@@ -1,6 +1,20 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
+function stableKey(row: any, idx: number) {
+  const id = row?.id ?? row?._id ?? row?.uuid ?? null;
+  if (id != null) return String(id);
+  try {
+    const s = JSON.stringify(row);
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+    return `${h}-${idx}`;
+  } catch {
+    return String(idx);
+  }
+}
+
+
 type Column = {
   key: string;
   label: string;
@@ -72,12 +86,12 @@ export default function DataGrid({
           <tbody>
             {data.map((row, i) => (
               <tr
-                key={i}
+                key={stableKey(row, i)}
                 className="border-b border-border/50 hover:bg-muted/20 transition-colors"
               >
                 {columns.map((col) => (
                   <td
-                    key={col.key}
+                    key={`${col.key}-${i}`}
                     className={cn(
                       "p-3 text-sm",
                       col.align === "center" && "text-center",

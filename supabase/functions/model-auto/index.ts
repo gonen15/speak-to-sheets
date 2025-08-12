@@ -37,20 +37,48 @@ Deno.serve(async (req)=>{
       const types: Record<string,ColType> = {};
       for (const c of (ds.columns||[])) types[c] = typeGuess(sample.map((r:any)=>r?.[c]));
 
-      const dims = (ds.columns||[]).filter(c => types[c]==="string").slice(0,6);
-      const nums = (ds.columns||[]).filter(c => types[c]==="number").slice(0,6);
+      // Choose dimensions and numeric metrics safely
+      const dims = (ds.columns||[])
+        .filter(c => types[c]==="string" && String(c||"").trim() !== '' && !/^\d+(?:[\/-\.\s]\d+)*$/.test(String(c)) && String(c).length <= 60)
+        .slice(0, 6);
+      const nums = (ds.columns||[])
+        .filter(c => types[c]==="number" && !/(^id$|_id$|^id_|_id$|id$)/i.test(String(c)))
+        .slice(0, 10);
 
-      const metrics = [{ key:"count", label:"Rows", sql:"count(*)", format:"number" as const }].concat(
-        nums.map(k=>({ key:`sum_${k}`, label:`Sum ${k}`, sql:`sum( nullif((row->>'${k}')::numeric,'NaN') )`, format:"number" as const }))
-      );
+      // Pick date column by priority, then by first detected date
+      const priority = ["date","transaction_date","created_at","updated_at"];
+      const lowerCols = (ds.columns||[]).map((c:string)=>c.toLowerCase());
+      let date_column: string | null = null;
+      for (const p of priority){
+        const idx = lowerCols.indexOf(p);
+        if (idx >= 0) { date_column = (ds.columns||[])[idx]; break; }
+      }
+      if (!date_column) date_column = (ds.columns||[]).find((c:string)=>types[c]==="date") || null;
+
+      // Build rich metrics for semantic model (count + sum/avg/min/max for numeric)
+      const metrics = [
+        { key:"count", label:"Rows", sql:"count(*)", format:"number" as const },
+        ...nums.flatMap(k=>[
+          { key:`sum_${k}`, label:`Sum ${k}`, sql:`sum( nullif((row->>'${k}')::numeric,'NaN') )`, format:"number" as const },
+          { key:`avg_${k}`, label:`Avg ${k}`, sql:`avg( nullif((row->>'${k}')::numeric,'NaN') )`, format:"number" as const },
+          { key:`min_${k}`, label:`Min ${k}`, sql:`min( nullif((row->>'${k}')::numeric,'NaN') )`, format:"number" as const },
+          { key:`max_${k}`, label:`Max ${k}`, sql:`max( nullif((row->>'${k}')::numeric,'NaN') )`, format:"number" as const },
+        ])
+      ];
 
       // Persist a semantic_model "dataset pseudo-board": use negative board_id to avoid clash
       const board_id = Number(BigInt.asIntN(63, BigInt("0x"+datasetId.replace(/-/g,"").slice(0,12)))) * -1 || -Math.floor(Math.random()*1e9);
-      const payload = { board_id, name: `Dataset ${ds.name}`, date_column: (ds.columns||[]).find(c=>types[c]==="date") || null, dimensions: dims, metrics, glossary:{} } as any;
+      const payload = { board_id, name: `Dataset ${ds.name}`, date_column, dimensions: dims, metrics, glossary:{} } as any;
 
       const { error: upErr } = await supabase.from("semantic_models").upsert(payload as any, { onConflict: "board_id" });
       if (upErr) throw upErr;
-      return new Response(JSON.stringify({ ok:true, model: payload }), { status:200, headers:{...cors,"Content-Type":"application/json"} });
+
+      // Also persist a lightweight dataset_model used by the UI
+      const dsModel = { date_field: date_column, metric_keys: nums, dimensions: dims } as any;
+      const { error: dmErr } = await supabase.from("dataset_models").upsert({ dataset_id: datasetId, model: dsModel } as any, { onConflict: "dataset_id" });
+      if (dmErr) throw dmErr;
+
+      return new Response(JSON.stringify({ ok:true, stage:"model-auto.dataset", model: payload, dataset_model: dsModel }), { status:200, headers:{...cors,"Content-Type":"application/json"} });
     }
 
     if (source==="monday"){
@@ -73,8 +101,5 @@ Deno.serve(async (req)=>{
       return new Response(JSON.stringify({ ok:true, model: payload }), { status:200, headers:{...cors,"Content-Type":"application/json"} });
     }
 
-    throw new Error("unsupported source");
-  }catch(e:any){
-    return new Response(JSON.stringify({ ok:false, error:String(e?.message||e) }), { status:500, headers:{...cors,"Content-Type":"application/json"} });
-  }
-});
+    const err = String(e?.message||e);
+    return new Response(JSON.stringify({ ok:false, stage:"model-auto", error: err }), { status:200, headers:{...cors,"Content-Type":"application/json"} });

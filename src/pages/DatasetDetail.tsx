@@ -136,10 +136,10 @@ const DatasetDetail = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {(filteredRows ?? ds.rows).slice(0, 100).map((r, i) => (
-                      <tr key={i} className="border-b">
+                    {(filteredRows ?? ds.rows).slice(0, 500).map((r, i) => (
+                      <tr key={`${i}-${(r as any)?.id ?? (r as any)?._id ?? ''}`} className="border-b">
                         {ds.columns.map((c) => (
-                          <td key={c} className="py-2 pr-4">{String((r as any)[c])}</td>
+                          <td key={`${c}-${i}`} className="py-2 pr-4">{String((r as any)[c])}</td>
                         ))}
                       </tr>
                     ))}
