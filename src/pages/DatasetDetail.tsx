@@ -8,6 +8,7 @@ import { useDataStore } from "@/store/dataStore";
 import GlobalFilterBar from "@/components/ui/GlobalFilterBar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { filtersSave, filtersGet } from "@/lib/supabaseEdge";
+import DataSummaryReport from "@/components/ui/DataSummaryReport";
 const DatasetDetail = () => {
   const { t } = useI18n();
   const { id } = useParams();
@@ -114,11 +115,19 @@ const DatasetDetail = () => {
         <Button variant="outline" onClick={() => syncDataset(ds.id)} disabled={ds.status === "syncing" || !ds.sourceUrl}>{t("syncNow")}</Button>
       </div>
 
+      {/* Summary Report */}
+      <DataSummaryReport />
+
       <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue={initialTab}>
         <TabsList>
+          <TabsTrigger value="summary">סיכום</TabsTrigger>
           <TabsTrigger value="view">תצוגה</TabsTrigger>
           <TabsTrigger value="filters">פילטרים</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="summary">
+          <DataSummaryReport />
+        </TabsContent>
 
         <TabsContent value="view">
           <Card>
