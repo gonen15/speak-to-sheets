@@ -25,7 +25,8 @@ export default function DatasetDashboard(){
   const [numericMetrics, setNumericMetrics] = useState<string[]>([]);
   const [numericTotals, setNumericTotals] = useState<Record<string, number>>({});
   const [previewRows, setPreviewRows] = useState<any[]>([]);
-
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [modelSaving, setModelSaving] = useState(false);
   useEffect(()=>{(async()=>{
     if(!id) return;
     const { data, error } = await supabase.from("uploaded_datasets").select("*").eq("id", id).maybeSingle();
@@ -36,9 +37,23 @@ export default function DatasetDashboard(){
       setMetrics(["count"]);
       const dateLike = cols.find(c => /date|time|day|month|created/i.test(c));
       if(dateLike) setDateField(dateLike);
-      // detect numeric-like columns and sample rows
-      const numeric = (cols || []).filter((c:string)=>/(amount|revenue|total|sum|cost|price|qty|quantity|units|value|sales|income|expense)/i.test(c)).slice(0,3);
-      setNumericMetrics(numeric);
+      // detect numeric-like columns
+      const numeric = (cols || []).filter((c:string)=>/(amount|revenue|total|sum|cost|price|qty|quantity|units|value|sales|income|expense)/i.test(c));
+      setNumericMetrics(numeric.slice(0,3));
+      // try load existing model
+      try {
+        const { data: dm } = await supabase.from("dataset_models").select("model").eq("dataset_id", id).maybeSingle();
+        const m: any = (dm as any)?.model;
+        if (m) {
+          if (m.date_field) setDateField(m.date_field);
+          if (Array.isArray(m.metric_keys)) {
+            setSelectedMetrics(m.metric_keys);
+            setNumericMetrics(m.metric_keys);
+          }
+        } else {
+          setSelectedMetrics(numeric.slice(0,3));
+        }
+      } catch {}
       try {
         const { data: pr } = await supabase.from("dataset_rows").select("row").eq("dataset_id", id).limit(100);
         setPreviewRows((pr||[]).map((r:any)=>r.row));
@@ -78,6 +93,11 @@ export default function DatasetDashboard(){
         setNumericTotals({});
       }
 
+      // Refresh preview rows
+      try {
+        const { data: pr2 } = await supabase.from("dataset_rows").select("row").eq("dataset_id", id).limit(100);
+        setPreviewRows((pr2 || []).map((r:any)=>r.row));
+      } catch {}
 
       // Distribution by selected dimension
       const dim = dims[0];
@@ -165,6 +185,44 @@ export default function DatasetDashboard(){
 
   const disabled = useMemo(()=>loading || !id,[loading,id]);
 
+  async function reloadModel(){
+    if(!id) return;
+    try {
+      const { data: dm } = await supabase.from("dataset_models").select("model").eq("dataset_id", id).maybeSingle();
+      const m: any = (dm as any)?.model;
+      if (m) {
+        if (m.date_field) setDateField(m.date_field);
+        if (Array.isArray(m.metric_keys)) { setSelectedMetrics(m.metric_keys); setNumericMetrics(m.metric_keys); }
+      }
+    } catch {}
+  }
+
+  async function saveModel(){
+    if(!id) return;
+    setModelSaving(true);
+    try {
+      const model: any = { date_field: dateField || null, metric_keys: selectedMetrics, dimensions: meta?.columns || [] };
+      const { data: existing } = await supabase.from("dataset_models").select("id").eq("dataset_id", id).maybeSingle();
+      if ((existing as any)?.id) {
+        await supabase.from("dataset_models").update({ model }).eq("id", (existing as any).id);
+      } else {
+        await supabase.from("dataset_models").insert({ dataset_id: id, model });
+      }
+      setNumericMetrics(selectedMetrics);
+      await load();
+    } finally { setModelSaving(false); }
+  }
+
+  // Realtime refresh on new rows
+  useEffect(()=>{
+    if(!id) return;
+    const channel = supabase
+      .channel(`schema-db-changes-${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dataset_rows', filter: `dataset_id=eq.${id}` }, () => { load(); })
+      .subscribe();
+    return ()=>{ supabase.removeChannel(channel); };
+  },[id]);
+
   return (
     <main className="container" role="main">
       <PageMeta title={`Dataset Dashboard — ${meta?.name || "Dataset"}`} description="AI insights and chat over your dataset." path={`/dashboards/dataset/${id || ""}`}/>
@@ -200,6 +258,30 @@ export default function DatasetDashboard(){
           <button className="btn" disabled={disabled} onClick={()=>{ if(!loading) runInsights(); }}>Generate</button>
         </div>
       </section>
+
+      <Section title="מודל סמנטי (Power BI)">
+        <div className="card" style={{ padding: 12 }}>
+          <div className="label" style={{ marginBottom: 8 }}>בחרו מטריקות (סכימה אוטומטית)</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 8 }}>
+            {(meta?.columns || []).filter((c:string)=>/(amount|revenue|total|sum|cost|price|qty|quantity|units|value|sales|income|expense|num|count)/i.test(c) || selectedMetrics.includes(c)).map((c:string)=> (
+              <label key={`sel-${c}`} className="label" style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <input
+                  type="checkbox"
+                  checked={selectedMetrics.includes(c)}
+                  onChange={(e)=>{
+                    setSelectedMetrics((prev)=> e.target.checked ? Array.from(new Set([...prev, c])) : prev.filter(x=>x!==c));
+                  }}
+                />
+                {c}
+              </label>
+            ))}
+          </div>
+          <div className="toolbar" style={{ marginTop: 12, display:"flex", gap:8 }}>
+            <button className="btn" onClick={saveModel} disabled={disabled || modelSaving}>{modelSaving ? "שומר..." : "שמור מודל"}</button>
+            <button className="btn" onClick={async()=>{ await autoModel({ source: "dataset", datasetId: id! }); await reloadModel(); await load(); }} disabled={disabled}>בנה מודל אוטומטי</button>
+          </div>
+        </div>
+      </Section>
 
       {trend.length > 0 && (
         <Section title="מגמה לאורך זמן + תחזית">
