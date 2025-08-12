@@ -16,6 +16,14 @@ interface CustomerDetailViewProps {
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#ff00ff'];
 
 export default function CustomerDetailView({ customer, onBack, onDrillDown }: CustomerDetailViewProps) {
+  // Extract display name without customer number for cleaner UI
+  const displayName = customer.customer.includes(' - ') 
+    ? customer.customer.split(' - ')[1] 
+    : customer.customer;
+  const customerNumber = customer.customer.includes(' - ') 
+    ? customer.customer.split(' - ')[0] 
+    : '';
+    
   // Generate synthetic monthly data for this customer
   const monthNames = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי"];
   const monthlyData = monthNames.map((month, idx) => ({
@@ -46,8 +54,10 @@ export default function CustomerDetailView({ customer, onBack, onDrillDown }: Cu
             חזרה
           </Button>
           <div>
-            <h2 className="text-2xl font-bold">{customer.customer}</h2>
-            <p className="text-muted-foreground">ניתוח מפורט לקוח</p>
+            <h2 className="text-2xl font-bold">{displayName}</h2>
+            <p className="text-muted-foreground">
+              {customerNumber && `לקוח מס' ${customerNumber} • `}ניתוח מפורט לקוח
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">

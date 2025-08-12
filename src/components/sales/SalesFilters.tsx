@@ -145,19 +145,28 @@ export default function SalesFiltersComponent({ filters, onFiltersChange, availa
         <div className="space-y-3">
           <label className="text-sm font-medium">לקוחות:</label>
           <div className="flex flex-wrap gap-2">
-            {availableFilters.customers.slice(0, 6).map((customer) => (
-              <Badge
-                key={customer}
-                variant={filters.customers.includes(customer) ? "default" : "outline"}
-                className="cursor-pointer transition-colors"
-                onClick={() => toggleCustomer(customer)}
-              >
-                {customer.length > 20 ? customer.substring(0, 20) + '...' : customer}
-                {filters.customers.includes(customer) && (
-                  <X className="w-3 h-3 mr-1" />
-                )}
-              </Badge>
-            ))}
+            {availableFilters.customers.slice(0, 6).map((customer) => {
+              // Extract just the company name without the customer number
+              const displayName = customer.includes(' - ') 
+                ? customer.split(' - ')[1] 
+                : customer;
+              const shortName = displayName.length > 25 ? displayName.substring(0, 25) + '...' : displayName;
+              
+              return (
+                <Badge
+                  key={customer}
+                  variant={filters.customers.includes(customer) ? "default" : "outline"}
+                  className="cursor-pointer transition-colors"
+                  onClick={() => toggleCustomer(customer)}
+                  title={displayName} // Show full name on hover
+                >
+                  {shortName}
+                  {filters.customers.includes(customer) && (
+                    <X className="w-3 h-3 mr-1" />
+                  )}
+                </Badge>
+              );
+            })}
             {availableFilters.customers.length > 6 && (
               <Badge variant="outline" className="cursor-pointer">
                 +{availableFilters.customers.length - 6} נוספים

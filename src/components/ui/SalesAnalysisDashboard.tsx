@@ -201,25 +201,34 @@ export default function SalesAnalysisDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {salesData.topCustomers.slice(0, 8).map((customer, idx) => (
-                <div 
-                  key={idx} 
-                  className="flex justify-between items-center py-2 border-b border-border/30 last:border-0 hover:bg-muted rounded px-2 cursor-pointer transition-colors"
-                  onClick={() => handleDrillDown({
-                    type: 'customer',
-                    customer: customer.customer,
-                    quantity: customer.quantity
-                  })}
-                >
-                  <div className="flex-1">
-                    <span className="text-sm text-foreground truncate block">{customer.customer}</span>
-                    <span className="text-xs text-muted-foreground">{customer.products} מוצרים</span>
+              {salesData.topCustomers.slice(0, 8).map((customer, idx) => {
+                // Extract just the company name for display
+                const displayName = customer.customer.includes(' - ') 
+                  ? customer.customer.split(' - ')[1] 
+                  : customer.customer;
+                const shortName = displayName.length > 30 ? displayName.substring(0, 30) + '...' : displayName;
+                
+                return (
+                  <div 
+                    key={idx} 
+                    className="flex justify-between items-center py-2 border-b border-border/30 last:border-0 hover:bg-muted rounded px-2 cursor-pointer transition-colors"
+                    onClick={() => handleDrillDown({
+                      type: 'customer',
+                      customer: customer.customer,
+                      quantity: customer.quantity
+                    })}
+                    title={displayName} // Show full name on hover
+                  >
+                    <div className="flex-1">
+                      <span className="text-sm text-foreground truncate block">{shortName}</span>
+                      <span className="text-xs text-muted-foreground">{customer.products} מוצרים</span>
+                    </div>
+                    <span className="text-sm font-medium text-right ml-4">
+                      {customer.quantity.toLocaleString()} יח'
+                    </span>
                   </div>
-                  <span className="text-sm font-medium text-right ml-4">
-                    {customer.quantity.toLocaleString()} יח'
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
