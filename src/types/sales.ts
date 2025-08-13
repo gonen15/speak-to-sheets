@@ -1,14 +1,16 @@
 export interface SalesData {
   totalQuantity: number;
+  totalRevenue?: number; // Add optional revenue field
   totalProducts: number;
   uniqueCustomers: number;
   avgQuantityPerProduct: number;
+  avgRevenuePerProduct?: number; // Add optional avg revenue field
   totalCategories: number;
-  salesByMonth: Array<{ month: string; quantity: number; products: number }>;
+  salesByMonth: Array<{ month: string; quantity: number; revenue?: number; products: number }>;
   salesByStatus: Array<{ status: string; quantity: number; products: number; color: string }>;
-  salesByCategory: Array<{ category: string; quantity: number; percentage: number }>;
-  topCustomers: Array<{ customer: string; quantity: number; products: number }>;
-  topProducts: Array<{ product: string; quantity: number; categories: number }>;
+  salesByCategory: Array<{ category: string; quantity: number; revenue?: number; percentage: number }>;
+  topCustomers: Array<{ customer: string; quantity: number; revenue?: number; products: number }>;
+  topProducts: Array<{ product: string; quantity: number; revenue?: number; categories: number }>;
 }
 
 export interface ProductData {
@@ -24,9 +26,10 @@ export interface ProductData {
 export interface CustomerData {
   customer: string;
   quantity: number;
+  revenue?: number; // Add optional revenue field
   products: number;
   categories: string[];
-  monthlyData: Array<{ month: string; quantity: number }>;
+  monthlyData: Array<{ month: string; quantity: number; revenue?: number }>;
 }
 
 export interface DrilldownData {

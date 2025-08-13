@@ -1084,36 +1084,6 @@ export type Database = {
           status: string | null
           updated_at: string | null
         }
-        Insert: {
-          amount?: never
-          board_id?: number | null
-          brand?: never
-          client?: never
-          country?: never
-          created_at?: string | null
-          date?: never
-          date_to?: never
-          item_id?: number | null
-          item_name?: string | null
-          owner?: never
-          status?: never
-          updated_at?: string | null
-        }
-        Update: {
-          amount?: never
-          board_id?: number | null
-          brand?: never
-          client?: never
-          country?: never
-          created_at?: string | null
-          date?: never
-          date_to?: never
-          item_id?: number | null
-          item_name?: string | null
-          owner?: never
-          status?: never
-          updated_at?: string | null
-        }
         Relationships: [
           {
             foreignKeyName: "monday_items_board_id_fkey"
@@ -1172,6 +1142,21 @@ export type Database = {
           sql: string
         }[]
       }
+      aggregate_sales: {
+        Args: {
+          p_dataset: string
+          p_metrics: string[]
+          p_dimensions?: string[]
+          p_filters?: Json
+          p_date_from?: string
+          p_date_to?: string
+          p_limit?: number
+        }
+        Returns: {
+          rows: Json
+          sql: string
+        }[]
+      }
       dataset_upsert_from_csv: {
         Args: {
           p_name: string
@@ -1182,6 +1167,12 @@ export type Database = {
         Returns: {
           dataset_id: string
           action: string
+        }[]
+      }
+      fetch_google_sheet: {
+        Args: { sheet_id: string; gid?: string }
+        Returns: {
+          csv_data: string
         }[]
       }
       has_role: {

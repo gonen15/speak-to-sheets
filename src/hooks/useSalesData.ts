@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { SalesData, ProductData, CustomerData, SalesFilters } from '@/types/sales';
+import { usePricingData } from './usePricingData';
 
 // מבנה נתונים מפורט לפי מוצר ולקוח - מבוסס על מספרי לקוחות אמיתיים
 const productCustomerData = {
@@ -82,6 +83,8 @@ const productCustomerData = {
 };
 
 export const useSalesData = () => {
+  const { pricingData, loading: pricingLoading, calculateRevenue } = usePricingData();
+  
   const [rawProductData] = useState<ProductData[]>([
     {
       category: "פראנוי 150 גרם",
@@ -148,8 +151,8 @@ export const useSalesData = () => {
     }
   ]);
 
-  // חישוב נתוני לקוחות מהנתונים המפורטים
-  const calculateCustomerData = (): CustomerData[] => {
+  // חישוב נתוני לקוחות מהנתונים המפורטים עם מחזור מכירות
+  const calculateCustomerData = useMemo((): CustomerData[] => {
     const customers: { [key: string]: CustomerData } = {};
     
     Object.entries(productCustomerData).forEach(([product, customerBreakdown]) => {
@@ -158,40 +161,51 @@ export const useSalesData = () => {
           customers[customerName] = {
             customer: customerName,
             quantity: 0,
+            revenue: 0, // Add revenue field
             products: 0,
             categories: [],
             monthlyData: Array.from({ length: 7 }, (_, i) => ({
               month: ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי"][i],
-              quantity: 0
+              quantity: 0,
+              revenue: 0 // Add revenue field
             }))
           };
         }
         
-        customers[customerName].quantity += Math.max(0, data.total2025);
+        const quantity = Math.max(0, data.total2025);
+        const revenue = calculateRevenue(product, customerName, quantity);
+        
+        customers[customerName].quantity += quantity;
+        customers[customerName].revenue += revenue;
         customers[customerName].products += 1;
         customers[customerName].categories.push(product);
         
         // חיבור נתונים חודשיים
         data.monthly2025.forEach((monthlyQty, index) => {
           if (customers[customerName].monthlyData[index]) {
-            customers[customerName].monthlyData[index].quantity += Math.max(0, monthlyQty);
+            const qty = Math.max(0, monthlyQty);
+            const rev = calculateRevenue(product, customerName, qty);
+            customers[customerName].monthlyData[index].quantity += qty;
+            customers[customerName].monthlyData[index].revenue += rev;
           }
         });
       });
     });
     
-    return Object.values(customers).sort((a, b) => b.quantity - a.quantity);
-  };
+    return Object.values(customers).sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+  }, [pricingData, calculateRevenue]);
 
-  const [rawCustomerData] = useState<CustomerData[]>(calculateCustomerData());
+  const rawCustomerData = calculateCustomerData;
 
   const getFilteredSalesData = (filters: SalesFilters): SalesData => {
-    // Calculate filtered data based on product and customer filters
-    const calculateFilteredQuantity = (productName: string, monthIndex?: number) => {
+    // Calculate filtered data based on product and customer filters - with revenue
+    const calculateFilteredData = (productName: string, monthIndex?: number) => {
       const productData = productCustomerData[productName];
-      if (!productData) return 0;
+      if (!productData) return { quantity: 0, revenue: 0 };
       
-      let total = 0;
+      let totalQuantity = 0;
+      let totalRevenue = 0;
+      
       Object.entries(productData).forEach(([customerName, data]: [string, any]) => {
         // Apply customer filter
         if (filters.customers.length > 0 && !filters.customers.includes(customerName)) {
@@ -200,15 +214,18 @@ export const useSalesData = () => {
         
         if (monthIndex !== undefined) {
           // Get monthly data
-          const monthlyValue = data.monthly2025[monthIndex] || 0;
-          total += Math.max(0, monthlyValue);
+          const monthlyValue = Math.max(0, data.monthly2025[monthIndex] || 0);
+          totalQuantity += monthlyValue;
+          totalRevenue += calculateRevenue(productName, customerName, monthlyValue);
         } else {
           // Get total data
-          total += Math.max(0, data.total2025);
+          const quantity = Math.max(0, data.total2025);
+          totalQuantity += quantity;
+          totalRevenue += calculateRevenue(productName, customerName, quantity);
         }
       });
       
-      return total;
+      return { quantity: totalQuantity, revenue: totalRevenue };
     };
 
     // Filter products based on filters
@@ -220,41 +237,53 @@ export const useSalesData = () => {
     });
 
     // Calculate totals with customer filters applied
-    const totalQuantity2025 = filteredProducts.reduce((sum, product) => {
-      return sum + calculateFilteredQuantity(product.category);
-    }, 0);
+    const totals = filteredProducts.reduce((acc, product) => {
+      const data = calculateFilteredData(product.category);
+      acc.quantity += data.quantity;
+      acc.revenue += data.revenue;
+      return acc;
+    }, { quantity: 0, revenue: 0 });
     
     // Generate monthly data with both product and customer filters
     const monthNames = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי"];
     const salesByMonth = monthNames.map((monthName, idx) => {
-      const monthTotal = filteredProducts.reduce((sum, product) => {
-        return sum + calculateFilteredQuantity(product.category, idx);
-      }, 0);
+      const monthData = filteredProducts.reduce((acc, product) => {
+        const data = calculateFilteredData(product.category, idx);
+        acc.quantity += data.quantity;
+        acc.revenue += data.revenue;
+        return acc;
+      }, { quantity: 0, revenue: 0 });
       
       const activeProducts = filteredProducts.filter(product => 
-        calculateFilteredQuantity(product.category, idx) > 0
+        calculateFilteredData(product.category, idx).quantity > 0
       ).length;
       
       return {
         month: monthName,
-        quantity: monthTotal,
+        quantity: monthData.quantity,
+        revenue: monthData.revenue,
         products: activeProducts
       };
     });
 
-    // Generate category data
+    // Generate category data with revenue
     const salesByCategory = filteredProducts
-      .sort((a, b) => b.total2025 - a.total2025)
-      .map(product => ({
-        category: product.category,
-        quantity: product.total2025,
-        percentage: totalQuantity2025 > 0 ? (product.total2025 / totalQuantity2025) * 100 : 0
-      }));
+      .map(product => {
+        const data = calculateFilteredData(product.category);
+        return {
+          category: product.category,
+          quantity: data.quantity,
+          revenue: data.revenue,
+          percentage: totals.revenue > 0 ? (data.revenue / totals.revenue) * 100 : 0
+        };
+      })
+      .sort((a, b) => b.revenue - a.revenue);
 
-    // Generate top products
+    // Generate top products with revenue
     const topProducts = salesByCategory.slice(0, 5).map(cat => ({
       product: cat.category,
       quantity: cat.quantity,
+      revenue: cat.revenue,
       categories: 1
     }));
 
@@ -303,10 +332,12 @@ export const useSalesData = () => {
       .sort((a, b) => b.quantity - a.quantity);
 
     return {
-      totalQuantity: totalQuantity2025,
+      totalQuantity: totals.quantity,
+      totalRevenue: totals.revenue, // Add total revenue
       totalProducts: salesByCategory.length,
       uniqueCustomers: filteredCustomers.length,
-      avgQuantityPerProduct: totalQuantity2025 / Math.max(salesByCategory.length, 1),
+      avgQuantityPerProduct: totals.quantity / Math.max(salesByCategory.length, 1),
+      avgRevenuePerProduct: totals.revenue / Math.max(salesByCategory.length, 1), // Add avg revenue
       totalCategories: salesByCategory.length,
       salesByMonth,
       salesByStatus,
@@ -343,6 +374,8 @@ export const useSalesData = () => {
     getProductDetails,
     getCustomerDetails,
     getProductCustomerBreakdown,
-    getAvailableFilters
+    getAvailableFilters,
+    pricingLoading,
+    calculateRevenue
   };
 };
