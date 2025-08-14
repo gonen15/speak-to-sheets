@@ -1,104 +1,150 @@
-import { useEffect, useState } from "react";
-import { getKpis, getByStatus, getByMonth, getTopCustomers } from "@/lib/data";
-import PageMeta from "@/components/common/PageMeta";
-import KPI from "@/components/ui/KPI";
-import Section from "@/components/ui/Section";
-import ChartFrame from "@/components/charts/ChartFrame";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid, ResponsiveContainer } from "recharts";
+import React, { useEffect, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+
+type Row = {
+  amount_total_ils: number;
+  orders: number;
+  year?: number;
+  month?: number;
+  order_status?: string;
+  customer_name?: string;
+};
 
 export default function MasterDashboard() {
-  const [loading, setLoading] = useState(true);
-  const [kpi, setKpi] = useState<any>(null);
-  const [byStatus, setByStatus] = useState<any[]>([]);
-  const [byMonth, setByMonth] = useState<any[]>([]);
-  const [topCustomers, setTopCustomers] = useState<any[]>([]);
-  const [error, setError] = useState<string | undefined>();
+  const [kpi, setKpi] = useState<Row | null>(null);
+  const [byStatus, setByStatus] = useState<Row[]>([]);
+  const [byMonth, setByMonth] = useState<Row[]>([]);
+  const [topCustomers, setTopCustomers] = useState<Row[]>([]);
+
+  const uuid = "ba6ba6af-0d76-4216-a2b2-3202916c4abf";
 
   useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const [k, s, m, t] = await Promise.all([
-          getKpis(),
-          getByStatus(),
-          getByMonth(),
-          getTopCustomers()
-        ]);
-        setKpi(k);
-        setByStatus(s);
-        setByMonth(m);
-        setTopCustomers(t);
-      } catch (e: any) {
-        setError(e.message || "Load failed");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchKPI();
+    fetchByStatus();
+    fetchByMonth();
+    fetchTopCustomers();
   }, []);
 
-  if (loading) return <div className="p-4">Loading...</div>;
-  if (error) return <div className="p-4 text-red-500">{error}</div>;
+  async function fetchKPI() {
+    const res = await fetch(`/rpc/aggregate_sales`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        p_dataset: uuid,
+        p_metrics: ["amount_total_ils", "orders"],
+        p_dimensions: [],
+      }),
+    });
+    const data = await res.json();
+    setKpi(data[0]);
+  }
+
+  async function fetchByStatus() {
+    const res = await fetch(`/rpc/aggregate_sales`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        p_dataset: uuid,
+        p_metrics: ["amount_total_ils", "orders"],
+        p_dimensions: ["order_status"],
+      }),
+    });
+    const data = await res.json();
+    setByStatus(data);
+  }
+
+  async function fetchByMonth() {
+    const res = await fetch(`/rpc/aggregate_sales`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        p_dataset: uuid,
+        p_metrics: ["amount_total_ils", "orders"],
+        p_dimensions: ["year", "month"],
+      }),
+    });
+    const data = await res.json();
+    setByMonth(data);
+  }
+
+  async function fetchTopCustomers() {
+    const res = await fetch(`/rpc/aggregate_sales`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        p_dataset: uuid,
+        p_metrics: ["amount_total_ils"],
+        p_dimensions: ["customer_name"],
+      }),
+    });
+    const data = await res.json();
+    setTopCustomers(data);
+  }
 
   return (
-    <div className="p-6 space-y-8">
-      <PageMeta title="Sales Dashboard" />
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">💼 Master Dashboard</h1>
 
-      <Section title="Key Metrics">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KPI label="Total Sales (₪)" value={kpi?.amount_total_ils?.toLocaleString()} />
-          <KPI label="Total Orders" value={kpi?.orders?.toLocaleString()} />
-          <KPI label="Avg Order Value" value={parseFloat(kpi?.avg_order)?.toFixed(2)} />
-          <KPI label="Total Rows" value={kpi?.rows?.toLocaleString()} />
-        </div>
-      </Section>
+      {/* KPI */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-muted-foreground text-sm">Total Orders</div>
+            <div className="text-2xl font-bold">{kpi?.orders ?? "-"}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-muted-foreground text-sm">Total Revenue (₪)</div>
+            <div className="text-2xl font-bold">{kpi?.amount_total_ils?.toLocaleString() ?? "-"}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Section title="Sales by Month">
-        <ChartFrame>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={byMonth}>
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <CartesianGrid strokeDasharray="3 3" />
-              <Line type="monotone" dataKey="amount_total_ils" stroke="#8884d8" />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartFrame>
-      </Section>
+      {/* Orders by Status */}
+      <div>
+        <h2 className="text-xl font-semibold">📦 Orders by Status</h2>
+        <Separator className="my-2" />
+        <ul className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          {byStatus.map((row, i) => (
+            <li key={i} className="text-sm border p-3 rounded-lg">
+              <div className="font-semibold">{row.order_status || "(unknown)"}</div>
+              <div>Orders: {row.orders}</div>
+              <div>Total: ₪ {row.amount_total_ils.toLocaleString()}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      <Section title="Sales by Status">
-        <ChartFrame>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={byStatus}>
-              <XAxis dataKey="order_status" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="amount_total_ils" fill="#82ca9d" />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartFrame>
-      </Section>
+      {/* Time Series Chart */}
+      <div>
+        <h2 className="text-xl font-semibold">📈 Orders by Month</h2>
+        <Separator className="my-2" />
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={byMonth.map((r) => ({ ...r, label: `${r.month}/${r.year}` }))}>
+            <XAxis dataKey="label" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="orders" fill="#8884d8" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
 
-      <Section title="Top Customers">
-        <div className="overflow-x-auto">
-          <table className="min-w-full table-auto border border-gray-200">
-            <thead>
-              <tr className="bg-gray-100 text-left">
-                <th className="px-4 py-2">Customer</th>
-                <th className="px-4 py-2">Total Sales (₪)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topCustomers.map((c, idx) => (
-                <tr key={idx} className="border-t">
-                  <td className="px-4 py-2">{c.customer_name}</td>
-                  <td className="px-4 py-2">{parseFloat(c.amount_total_ils).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Section>
+      {/* Top Customers */}
+      <div>
+        <h2 className="text-xl font-semibold">👑 Top Customers</h2>
+        <Separator className="my-2" />
+        <ul className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          {topCustomers.map((row, i) => (
+            <li key={i} className="text-sm border p-3 rounded-lg">
+              <div className="font-semibold">{row.customer_name || "(unknown)"}</div>
+              <div>Total: ₪ {row.amount_total_ils.toLocaleString()}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
