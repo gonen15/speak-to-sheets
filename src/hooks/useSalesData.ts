@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { SalesData, ProductData, CustomerData, SalesFilters } from '@/types/sales';
 import { usePricingData } from './usePricingData';
+import { useRealSalesData } from './useRealSalesData';
 
 // מבנה נתונים מפורט לפי מוצר ולקוח - מבוסס על מספרי לקוחות אמיתיים
 const productCustomerData = {
@@ -84,6 +85,7 @@ const productCustomerData = {
 
 export const useSalesData = () => {
   const { pricingData, loading: pricingLoading, calculateRevenue } = usePricingData();
+  const { salesData: realSalesData, ordersData: realOrdersData, loading: realDataLoading, getReportUpdateDate } = useRealSalesData();
   
   const [rawProductData] = useState<ProductData[]>([
     {
@@ -375,7 +377,10 @@ export const useSalesData = () => {
     getCustomerDetails,
     getProductCustomerBreakdown,
     getAvailableFilters,
-    pricingLoading,
-    calculateRevenue
+    pricingLoading: pricingLoading || realDataLoading,
+    calculateRevenue,
+    getReportUpdateDate,
+    realSalesData,
+    realOrdersData
   };
 };

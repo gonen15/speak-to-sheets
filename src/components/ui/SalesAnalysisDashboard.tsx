@@ -32,7 +32,8 @@ export default function SalesAnalysisDashboard() {
     getProductDetails, 
     getCustomerDetails, 
     getAvailableFilters,
-    pricingLoading 
+    pricingLoading,
+    getReportUpdateDate
   } = useSalesData();
 
   const salesData = getFilteredSalesData(filters);
@@ -107,7 +108,7 @@ export default function SalesAnalysisDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">דוח מכירות 2025</h2>
-          <p className="text-sm text-muted-foreground mt-1">עודכן לאחרונה: יולי 2025</p>
+          <p className="text-sm text-muted-foreground mt-1">{getReportUpdateDate()}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
