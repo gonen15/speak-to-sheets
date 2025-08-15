@@ -1,13 +1,51 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { useOrdersData } from "@/hooks/useOrdersData";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 export default function OrdersAnalysisDashboard() {
   const { orders, loading, error, getSummaryData } = useOrdersData();
-  const [viewMode, setViewMode] = useState<'quantity' | 'revenue'>('revenue');
+  const [selectedYear, setSelectedYear] = useState<string>('2025');
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'revenue' | 'quantity'>('revenue');
   
+  // Filter orders based on selected filters
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      if (selectedYear !== 'all' && order.year !== selectedYear) return false;
+      if (selectedMonth !== 'all' && order.month !== selectedMonth) return false;
+      if (selectedCategory !== 'all' && order.category !== selectedCategory) return false;
+      if (selectedCustomer !== 'all' && order.customerName !== selectedCustomer) return false;
+      return true;
+    });
+  }, [orders, selectedYear, selectedMonth, selectedCategory, selectedCustomer]);
+
+  // Get unique values for filters
+  const availableYears = useMemo(() => {
+    const years = [...new Set(orders.map(order => order.year))].filter(Boolean).sort().reverse();
+    return years;
+  }, [orders]);
+
+  const availableMonths = useMemo(() => {
+    const months = [...new Set(orders.map(order => order.month))].filter(Boolean).sort();
+    return months;
+  }, [orders]);
+
+  const availableCategories = useMemo(() => {
+    const categories = [...new Set(orders.map(order => order.category))].filter(Boolean).sort();
+    return categories;
+  }, [orders]);
+
+  const availableCustomers = useMemo(() => {
+    const customers = [...new Set(orders.map(order => order.customerName))].filter(Boolean).sort();
+    return customers;
+  }, [orders]);
+
   if (loading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
@@ -32,7 +70,67 @@ export default function OrdersAnalysisDashboard() {
     );
   }
 
-  const summary = getSummaryData();
+  // Get summary data for filtered orders
+  const getSummaryDataForFiltered = () => {
+    const summary = {
+      totalRevenue: 0,
+      totalQuantity: 0,
+      totalOrders: filteredOrders.length,
+      uniqueCustomers: 0,
+      byProduct: {} as Record<string, { quantity: number; revenue: number; orders: number }>,
+      byCustomer: {} as Record<string, { quantity: number; revenue: number; orders: number; products: string[] }>,
+      byMonth: [] as Array<{ month: string; quantity: number; revenue: number; orders: number }>
+    };
+
+    const customerSet = new Set<string>();
+    const monthlyData: Record<string, { quantity: number; revenue: number; orders: number }> = {};
+
+    filteredOrders.forEach(order => {
+      summary.totalRevenue += order.totalAfterDiscount;
+      summary.totalQuantity += order.quantity;
+      customerSet.add(order.customerName);
+
+      // By product
+      if (!summary.byProduct[order.productCode]) {
+        summary.byProduct[order.productCode] = { quantity: 0, revenue: 0, orders: 0 };
+      }
+      summary.byProduct[order.productCode].quantity += order.quantity;
+      summary.byProduct[order.productCode].revenue += order.totalAfterDiscount;
+      summary.byProduct[order.productCode].orders += 1;
+
+      // By customer
+      if (!summary.byCustomer[order.customerName]) {
+        summary.byCustomer[order.customerName] = { quantity: 0, revenue: 0, orders: 0, products: [] };
+      }
+      summary.byCustomer[order.customerName].quantity += order.quantity;
+      summary.byCustomer[order.customerName].revenue += order.totalAfterDiscount;
+      summary.byCustomer[order.customerName].orders += 1;
+      
+      if (!summary.byCustomer[order.customerName].products.includes(order.productCode)) {
+        summary.byCustomer[order.customerName].products.push(order.productCode);
+      }
+
+      // By month
+      if (order.month && order.year) {
+        const monthKey = `${order.year}-${order.month.padStart(2, '0')}`;
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { quantity: 0, revenue: 0, orders: 0 };
+        }
+        monthlyData[monthKey].quantity += order.quantity;
+        monthlyData[monthKey].revenue += order.totalAfterDiscount;
+        monthlyData[monthKey].orders += 1;
+      }
+    });
+
+    summary.uniqueCustomers = customerSet.size;
+    summary.byMonth = Object.entries(monthlyData)
+      .map(([month, data]) => ({ month, ...data }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    return summary;
+  };
+
+  const summary = getSummaryDataForFiltered();
   
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('he-IL', {
@@ -51,7 +149,7 @@ export default function OrdersAnalysisDashboard() {
       quantity: data.quantity,
       revenue: data.revenue,
       orders: data.orders,
-      value: viewMode === 'quantity' ? data.quantity : data.revenue
+      value: activeTab === 'quantity' ? data.quantity : data.revenue
     }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 10);
@@ -63,40 +161,101 @@ export default function OrdersAnalysisDashboard() {
       revenue: data.revenue,
       orders: data.orders,
       products: data.products.length,
-      value: viewMode === 'quantity' ? data.quantity : data.revenue
+      value: activeTab === 'quantity' ? data.quantity : data.revenue
     }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 10);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">ניתוח הזמנות</h1>
-          <p className="text-muted-foreground">סה"כ {formatNumber(orders.length)} הזמנות</p>
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">ניתוח הזמנות</h1>
+            <p className="text-muted-foreground">סה"כ {formatNumber(filteredOrders.length)} הזמנות</p>
+          </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setViewMode('quantity')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'quantity' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
+
+        {/* Filters */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">שנה</label>
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger>
+                <SelectValue placeholder="בחר שנה" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל השנים</SelectItem>
+                {availableYears.map(year => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">חודש</label>
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger>
+                <SelectValue placeholder="בחר חודש" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל החודשים</SelectItem>
+                {availableMonths.map(month => (
+                  <SelectItem key={month} value={month}>{month}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">קטגוריה</label>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="בחר קטגוריה" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל הקטגוריות</SelectItem>
+                {availableCategories.map(category => (
+                  <SelectItem key={category} value={category}>{category}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">לקוח</label>
+            <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+              <SelectTrigger>
+                <SelectValue placeholder="בחר לקוח" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל הלקוחות</SelectItem>
+                {availableCustomers.slice(0, 20).map(customer => (
+                  <SelectItem key={customer} value={customer}>{customer}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-2 border-b">
+          <Button
+            variant={activeTab === 'revenue' ? 'default' : 'ghost'}
+            onClick={() => setActiveTab('revenue')}
+            className="rounded-b-none"
           >
-            תצוגת כמות
-          </button>
-          <button
-            onClick={() => setViewMode('revenue')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'revenue' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
+            לוח כספי
+          </Button>
+          <Button
+            variant={activeTab === 'quantity' ? 'default' : 'ghost'}
+            onClick={() => setActiveTab('quantity')}
+            className="rounded-b-none"
           >
-            תצוגת מכירות
-          </button>
+            לוח כמותי
+          </Button>
         </div>
       </div>
 
@@ -144,7 +303,7 @@ export default function OrdersAnalysisDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>
-              מוצרים מובילים - {viewMode === 'quantity' ? 'כמות' : 'מכירות'}
+              מוצרים מובילים - {activeTab === 'quantity' ? 'כמות' : 'מכירות'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -155,15 +314,15 @@ export default function OrdersAnalysisDashboard() {
                 <YAxis dataKey="name" type="category" width={100} />
                 <Tooltip 
                   formatter={(value: any, name: string) => [
-                    viewMode === 'quantity' ? formatNumber(value) : formatCurrency(value),
-                    viewMode === 'quantity' ? 'כמות' : 'מכירות'
+                    activeTab === 'quantity' ? formatNumber(value) : formatCurrency(value),
+                    activeTab === 'quantity' ? 'כמות' : 'מכירות'
                   ]}
                   labelFormatter={(label) => `מוצר: ${label}`}
                 />
                 <Bar 
                   dataKey="value" 
                   fill="#8884d8"
-                  name={viewMode === 'quantity' ? 'כמות' : 'מכירות'}
+                  name={activeTab === 'quantity' ? 'כמות' : 'מכירות'}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -174,7 +333,7 @@ export default function OrdersAnalysisDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>
-              לקוחות מובילים - {viewMode === 'quantity' ? 'כמות' : 'מכירות'}
+              לקוחות מובילים - {activeTab === 'quantity' ? 'כמות' : 'מכירות'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -185,15 +344,15 @@ export default function OrdersAnalysisDashboard() {
                 <YAxis dataKey="name" type="category" width={100} />
                 <Tooltip 
                   formatter={(value: any, name: string) => [
-                    viewMode === 'quantity' ? formatNumber(value) : formatCurrency(value),
-                    viewMode === 'quantity' ? 'כמות' : 'מכירות'
+                    activeTab === 'quantity' ? formatNumber(value) : formatCurrency(value),
+                    activeTab === 'quantity' ? 'כמות' : 'מכירות'
                   ]}
                   labelFormatter={(label) => `לקוח: ${label}`}
                 />
                 <Bar 
                   dataKey="value" 
                   fill="#82ca9d"
-                  name={viewMode === 'quantity' ? 'כמות' : 'מכירות'}
+                  name={activeTab === 'quantity' ? 'כמות' : 'מכירות'}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -219,7 +378,7 @@ export default function OrdersAnalysisDashboard() {
                     name === 'revenue' ? 'מכירות' : name === 'quantity' ? 'כמות' : 'הזמנות'
                   ]}
                 />
-                {viewMode === 'quantity' ? (
+                {activeTab === 'quantity' ? (
                   <Bar dataKey="quantity" fill="#8884d8" name="כמות" />
                 ) : (
                   <Bar dataKey="revenue" fill="#82ca9d" name="מכירות" />
