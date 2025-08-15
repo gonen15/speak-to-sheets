@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 
 export interface OrderData {
-  orderId: string;
-  customerName: string;
-  productName: string;
-  quantity: number;
-  amount: number;
-  date: string;
-  status: string;
+  date: string; // B - תאריך
+  customerName: string; // E - שם לקוח
+  productCode: string; // G - מק"ט
+  unitPrice: number; // J - מחיר בתעודה ש"ח
+  quantity: number; // K - מחיר בתעודה כמות
+  totalILS: number; // L - סה"כ ב־ש"ח
+  totalAfterDiscount: number; // O - סה"כ אחרי הנחה
+  month: string; // P - חודש
+  year: string; // Q - שנה
+  category: string; // R - קטגוריה
 }
 
 export interface SummaryData {
@@ -70,48 +73,28 @@ export const useOrdersData = () => {
     const lines = csv.split('\n').filter(line => line.trim());
     if (lines.length < 2) return [];
 
-    // Find header row
-    let headerIndex = -1;
-    let headers: string[] = [];
-    
-    for (let i = 0; i < Math.min(10, lines.length); i++) {
-      const cells = parseCSVLine(lines[i]);
-      if (cells.some(cell => 
-        cell.includes('הזמנה') || 
-        cell.includes('לקוח') || 
-        cell.includes('מוצר') ||
-        cell.includes('כמות') ||
-        cell.includes('סכום')
-      )) {
-        headerIndex = i;
-        headers = cells;
-        break;
-      }
-    }
-
-    if (headerIndex === -1) {
-      console.error('Could not find header row');
-      return [];
-    }
-
     const orders: OrderData[] = [];
     
-    for (let i = headerIndex + 1; i < lines.length; i++) {
+    // Skip header row and start from row 2
+    for (let i = 1; i < lines.length; i++) {
       const cells = parseCSVLine(lines[i]);
-      if (cells.length < 3 || !cells[0]) continue;
+      if (cells.length < 18) continue; // Make sure we have all columns up to R
 
       try {
         const order: OrderData = {
-          orderId: cells[0] || '',
-          customerName: extractCustomerName(cells[1] || ''),
-          productName: cells[2] || '',
-          quantity: parseFloat(cells[3]?.replace(/[^0-9.-]/g, '') || '0') || 0,
-          amount: parseFloat(cells[4]?.replace(/[^0-9.-]/g, '') || '0') || 0,
-          date: cells[5] || '',
-          status: cells[6] || 'לא ידוע'
+          date: cells[1] || '', // B - תאריך
+          customerName: cells[4] || '', // E - שם לקוח
+          productCode: cells[6] || '', // G - מק"ט
+          unitPrice: parseFloat(cells[9]?.replace(/[^0-9.-]/g, '') || '0') || 0, // J - מחיר בתעודה ש"ח
+          quantity: parseFloat(cells[10]?.replace(/[^0-9.-]/g, '') || '0') || 0, // K - כמות
+          totalILS: parseFloat(cells[11]?.replace(/[^0-9.-]/g, '') || '0') || 0, // L - סה"כ ב־ש"ח
+          totalAfterDiscount: parseFloat(cells[14]?.replace(/[^0-9.-]/g, '') || '0') || 0, // O - סה"כ אחרי הנחה
+          month: cells[15] || '', // P - חודש
+          year: cells[16] || '', // Q - שנה
+          category: cells[17] || '' // R - קטגוריה
         };
 
-        if (order.orderId && order.customerName && order.productName) {
+        if (order.customerName && order.productCode) {
           orders.push(order);
         }
       } catch (error) {
@@ -168,41 +151,39 @@ export const useOrdersData = () => {
 
     orders.forEach(order => {
       // Total calculations
-      summary.totalRevenue += order.amount;
+      summary.totalRevenue += order.totalAfterDiscount; // Use total after discount
       summary.totalQuantity += order.quantity;
       customerSet.add(order.customerName);
 
       // By product
-      if (!summary.byProduct[order.productName]) {
-        summary.byProduct[order.productName] = { quantity: 0, revenue: 0, orders: 0 };
+      if (!summary.byProduct[order.productCode]) {
+        summary.byProduct[order.productCode] = { quantity: 0, revenue: 0, orders: 0 };
       }
-      summary.byProduct[order.productName].quantity += order.quantity;
-      summary.byProduct[order.productName].revenue += order.amount;
-      summary.byProduct[order.productName].orders += 1;
+      summary.byProduct[order.productCode].quantity += order.quantity;
+      summary.byProduct[order.productCode].revenue += order.totalAfterDiscount;
+      summary.byProduct[order.productCode].orders += 1;
 
       // By customer
       if (!summary.byCustomer[order.customerName]) {
         summary.byCustomer[order.customerName] = { quantity: 0, revenue: 0, orders: 0, products: [] };
       }
       summary.byCustomer[order.customerName].quantity += order.quantity;
-      summary.byCustomer[order.customerName].revenue += order.amount;
+      summary.byCustomer[order.customerName].revenue += order.totalAfterDiscount;
       summary.byCustomer[order.customerName].orders += 1;
       
-      if (!summary.byCustomer[order.customerName].products.includes(order.productName)) {
-        summary.byCustomer[order.customerName].products.push(order.productName);
+      if (!summary.byCustomer[order.customerName].products.includes(order.productCode)) {
+        summary.byCustomer[order.customerName].products.push(order.productCode);
       }
 
-      // By month (extract from date)
-      if (order.date) {
-        const monthKey = extractMonthFromDate(order.date);
-        if (monthKey) {
-          if (!monthlyData[monthKey]) {
-            monthlyData[monthKey] = { quantity: 0, revenue: 0, orders: 0 };
-          }
-          monthlyData[monthKey].quantity += order.quantity;
-          monthlyData[monthKey].revenue += order.amount;
-          monthlyData[monthKey].orders += 1;
+      // By month - use existing month field
+      if (order.month && order.year) {
+        const monthKey = `${order.year}-${order.month.padStart(2, '0')}`;
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { quantity: 0, revenue: 0, orders: 0 };
         }
+        monthlyData[monthKey].quantity += order.quantity;
+        monthlyData[monthKey].revenue += order.totalAfterDiscount;
+        monthlyData[monthKey].orders += 1;
       }
     });
 
