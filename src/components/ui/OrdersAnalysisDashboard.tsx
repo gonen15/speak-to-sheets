@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { useOrdersData } from "@/hooks/useOrdersData";
@@ -7,15 +7,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Calendar, TrendingUp, TrendingDown, Users, Package, DollarSign, ShoppingCart, Filter, X, Search, BarChart3 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Calendar, TrendingUp, TrendingDown, Users, Package, DollarSign, ShoppingCart, Filter, X, Search, BarChart3, Brain, AlertCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export default function OrdersAnalysisDashboard() {
   const { orders, loading, error } = useOrdersData();
-  const [selectedYear, setSelectedYear] = useState<string>('2025');
+  const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('combined');
+  const [selectedProduct, setSelectedProduct] = useState<string>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
   const [customerSearch, setCustomerSearch] = useState<string>('');
+  const [productSearch, setProductSearch] = useState<string>('');
+  const [aiAdvice, setAiAdvice] = useState<string>('');
+  const [loadingAdvice, setLoadingAdvice] = useState(false);
+  const [showAdvice, setShowAdvice] = useState(false);
   const [activeTab, setActiveTab] = useState<'revenue' | 'quantity'>('revenue');
   
   // Filter orders based on selected filters
@@ -23,28 +32,39 @@ export default function OrdersAnalysisDashboard() {
     return orders.filter(order => {
       if (selectedYear !== 'all' && order.year !== selectedYear) return false;
       if (selectedMonth !== 'all' && order.month !== selectedMonth) return false;
-      if (selectedCategory !== 'all' && order.category !== selectedCategory) return false;
+      if (selectedCategory !== 'combined' && selectedCategory !== 'all') return false;
+      if (selectedProduct !== 'all' && order.productCode !== selectedProduct) return false;
       if (selectedCustomer !== 'all' && order.customerName !== selectedCustomer) return false;
       if (customerSearch && !order.customerName.toLowerCase().includes(customerSearch.toLowerCase())) return false;
+      if (productSearch && !order.productCode.toLowerCase().includes(productSearch.toLowerCase())) return false;
       return true;
     });
-  }, [orders, selectedYear, selectedMonth, selectedCategory, selectedCustomer, customerSearch]);
+  }, [orders, selectedYear, selectedMonth, selectedCategory, selectedProduct, selectedCustomer, customerSearch, productSearch]);
 
-  // Get unique values for filters
+  // Get unique values for filters with proper Hebrew month names
+  const monthNames = {
+    '1': 'ינואר', '2': 'פברואר', '3': 'מרץ', '4': 'אפריל', '5': 'מאי', '6': 'יוני',
+    '7': 'יולי', '8': 'אוגוסט', '9': 'ספטמבר', '10': 'אוקטובר', '11': 'נובמבר', '12': 'דצמבר'
+  };
+
   const availableYears = useMemo(() => {
     const years = [...new Set(orders.map(order => order.year))].filter(Boolean).sort().reverse();
-    return years;
+    return ['2024', '2025', ...years.filter(y => !['2024', '2025'].includes(y))];
   }, [orders]);
 
   const availableMonths = useMemo(() => {
-    const months = [...new Set(orders.map(order => order.month))].filter(Boolean).sort();
-    return months;
-  }, [orders]);
+    return Array.from({ length: 12 }, (_, i) => ({
+      value: String(i + 1),
+      label: monthNames[String(i + 1) as keyof typeof monthNames]
+    }));
+  }, []);
 
-  const availableCategories = useMemo(() => {
-    const categories = [...new Set(orders.map(order => order.category))].filter(Boolean).sort();
-    return categories;
-  }, [orders]);
+  const availableProducts = useMemo(() => {
+    const products = [...new Set(orders.map(order => order.productCode))].filter(Boolean).sort();
+    return productSearch ? 
+      products.filter(product => product.toLowerCase().includes(productSearch.toLowerCase())) : 
+      products;
+  }, [orders, productSearch]);
 
   const availableCustomers = useMemo(() => {
     const customers = [...new Set(orders.map(order => order.customerName))].filter(Boolean).sort();
@@ -58,11 +78,13 @@ export default function OrdersAnalysisDashboard() {
     let count = 0;
     if (selectedYear !== 'all') count++;
     if (selectedMonth !== 'all') count++;
-    if (selectedCategory !== 'all') count++;
+    if (selectedCategory !== 'combined') count++;
+    if (selectedProduct !== 'all') count++;
     if (selectedCustomer !== 'all') count++;
     if (customerSearch) count++;
+    if (productSearch) count++;
     return count;
-  }, [selectedYear, selectedMonth, selectedCategory, selectedCustomer, customerSearch]);
+  }, [selectedYear, selectedMonth, selectedCategory, selectedProduct, selectedCustomer, customerSearch, productSearch]);
 
   // Get summary data for filtered orders
   const getSummaryDataForFiltered = () => {
@@ -166,13 +188,37 @@ export default function OrdersAnalysisDashboard() {
       .slice(0, 8);
   }, [summary.byCustomer, activeTab]);
 
+  // Get AI advice function
+  const getAIAdvice = async () => {
+    setLoadingAdvice(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('dashboard-advisor', {
+        body: {
+          salesData: filteredOrders.slice(0, 100), // Send sample of data
+          inventoryData: {} // Will be populated when inventory data is available
+        }
+      });
+
+      if (error) throw error;
+      setAiAdvice(data.advice);
+      setShowAdvice(true);
+    } catch (error) {
+      console.error('Error getting AI advice:', error);
+      toast.error('שגיאה בקבלת ייעוץ AI');
+    } finally {
+      setLoadingAdvice(false);
+    }
+  };
+
   // Reset all filters
   const resetFilters = () => {
-    setSelectedYear('2025');
+    setSelectedYear('all');
     setSelectedMonth('all');
-    setSelectedCategory('all');
+    setSelectedCategory('combined');
+    setSelectedProduct('all');
     setSelectedCustomer('all');
     setCustomerSearch('');
+    setProductSearch('');
   };
 
   const formatCurrency = (value: number) => {
@@ -325,67 +371,131 @@ export default function OrdersAnalysisDashboard() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">כל החודשים</SelectItem>
-                      {availableMonths.map(month => (
-                        <SelectItem key={month} value={month}>{month}</SelectItem>
-                      ))}
+                       {availableMonths.map(month => (
+                         <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <Package className="w-4 h-4" />
-                    קטגוריה
-                  </label>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="בחר קטגוריה" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">כל הקטגוריות</SelectItem>
-                      {availableCategories.map(category => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                 <div className="space-y-2">
+                   <label className="text-sm font-medium flex items-center gap-2">
+                     <BarChart3 className="w-4 h-4" />
+                     סוג תצוגה
+                   </label>
+                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                     <SelectTrigger>
+                       <SelectValue placeholder="בחר סוג תצוגה" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="combined">תצוגה משותפת</SelectItem>
+                       <SelectItem value="financial">תצוגה כספית</SelectItem>
+                       <SelectItem value="quantity">תצוגה כמותית</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <Search className="w-4 h-4" />
-                    חיפוש לקוח
-                  </label>
-                  <div className="relative">
-                    <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="הקלד שם לקוח..."
-                      value={customerSearch}
-                      onChange={(e) => setCustomerSearch(e.target.value)}
-                      className="pr-10"
-                    />
-                  </div>
-                </div>
+                 <div className="space-y-2">
+                   <label className="text-sm font-medium flex items-center gap-2">
+                     <Search className="w-4 h-4" />
+                     חיפוש מוצר
+                   </label>
+                   <div className="relative">
+                     <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                     <Input
+                       placeholder="הקלד קוד מוצר..."
+                       value={productSearch}
+                       onChange={(e) => setProductSearch(e.target.value)}
+                       className="pr-10"
+                     />
+                   </div>
+                 </div>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                   <label className="text-sm font-medium flex items-center gap-2">
+                     <Search className="w-4 h-4" />
+                     חיפוש לקוח
+                   </label>
+                   <div className="relative">
+                     <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                     <Input
+                       placeholder="הקלד שם לקוח..."
+                       value={customerSearch}
+                       onChange={(e) => setCustomerSearch(e.target.value)}
+                       className="pr-10"
+                     />
+                   </div>
+                 </div>
+
+                 <div className="space-y-2">
+                   <label className="text-sm font-medium flex items-center gap-2">
+                     <Brain className="w-4 h-4" />
+                     ייעוץ AI חכם
+                   </label>
+                   <Button 
+                     onClick={getAIAdvice}
+                     disabled={loadingAdvice}
+                     className="w-full gap-2"
+                     variant="outline"
+                   >
+                     {loadingAdvice ? (
+                       <>
+                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                         מקבל ייעוץ...
+                       </>
+                     ) : (
+                       <>
+                         <Brain className="w-4 h-4" />
+                         קבל ייעוץ AI לדשבורד
+                       </>
+                     )}
+                   </Button>
+                 </div>
               </div>
 
-              {customerSearch && availableCustomers.length > 0 && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    בחר לקוח מהתוצאות ({availableCustomers.length})
-                  </label>
-                  <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="בחר לקוח ספציפי" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      <SelectItem value="all">כל הלקוחות</SelectItem>
-                      {availableCustomers.slice(0, 50).map(customer => (
-                        <SelectItem key={customer} value={customer}>{customer}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {customerSearch && availableCustomers.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      בחר לקוח מהתוצאות ({availableCustomers.length})
+                    </label>
+                    <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="בחר לקוח ספציפי" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        <SelectItem value="all">כל הלקוחות</SelectItem>
+                        {availableCustomers.slice(0, 50).map(customer => (
+                          <SelectItem key={customer} value={customer}>{customer}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {productSearch && availableProducts.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      בחר מוצר מהתוצאות ({availableProducts.length})
+                    </label>
+                    <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="בחר מוצר ספציפי" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        <SelectItem value="all">כל המוצרים</SelectItem>
+                        {availableProducts.slice(0, 50).map(product => (
+                          <SelectItem key={product} value={product}>{product}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -640,7 +750,30 @@ export default function OrdersAnalysisDashboard() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        )}
+         )}
+
+        {/* AI Advice Dialog */}
+        <Dialog open={showAdvice} onOpenChange={setShowAdvice}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Brain className="w-5 h-5" />
+                ייעוץ AI לדשבורד
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-primary" />
+                  <span className="font-medium">המלצות מותאמות אישית</span>
+                </div>
+                <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                  {aiAdvice || 'טוען המלצות...'}
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
