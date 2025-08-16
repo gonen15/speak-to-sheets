@@ -168,7 +168,8 @@ export default function OrdersAnalysisDashboard() {
     return summary;
   };
 
-  const summary = getSummaryDataForFiltered();
+  // Memoize summary data calculation
+  const summary = useMemo(() => getSummaryDataForFiltered(), [filteredOrders]);
   
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('he-IL', {
@@ -190,7 +191,7 @@ export default function OrdersAnalysisDashboard() {
       data.revenue > top.revenue ? { name, revenue: data.revenue } : top, { name: '', revenue: 0 });
     
     return { avgOrderValue, topCustomer, topProduct };
-  }, [summary]);
+  }, [summary.totalOrders, summary.totalRevenue, summary.byCustomer, summary.byProduct]);
 
   const topProducts = Object.entries(summary.byProduct)
     .map(([product, data]) => ({
