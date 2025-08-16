@@ -64,50 +64,6 @@ export default function OrdersAnalysisDashboard() {
     return count;
   }, [selectedYear, selectedMonth, selectedCategory, selectedCustomer, customerSearch]);
 
-  // Reset all filters
-  const resetFilters = () => {
-    setSelectedYear('2025');
-    setSelectedMonth('all');
-    setSelectedCategory('all');
-    setSelectedCustomer('all');
-    setCustomerSearch('');
-  };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6 space-y-6 animate-fade-in">
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-64" />
-          <Skeleton className="h-6 w-48" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Skeleton className="h-96" />
-          <Skeleton className="h-96" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto p-6">
-        <Card className="border-destructive">
-          <CardContent className="text-center p-6">
-            <div className="text-destructive">
-              <h2 className="text-xl font-bold mb-2">שגיאה בטעינת הנתונים</h2>
-              <p className="text-muted-foreground">{error}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   // Get summary data for filtered orders
   const getSummaryDataForFiltered = () => {
     const summary = {
@@ -170,17 +126,6 @@ export default function OrdersAnalysisDashboard() {
 
   // Memoize summary data calculation
   const summary = useMemo(() => getSummaryDataForFiltered(), [filteredOrders]);
-  
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('he-IL', {
-      style: 'currency',
-      currency: 'ILS'
-    }).format(value);
-  };
-
-  const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('he-IL').format(value);
-  };
 
   // Calculate insights
   const insights = useMemo(() => {
@@ -221,8 +166,64 @@ export default function OrdersAnalysisDashboard() {
       .slice(0, 8);
   }, [summary.byCustomer, activeTab]);
 
+  // Reset all filters
+  const resetFilters = () => {
+    setSelectedYear('2025');
+    setSelectedMonth('all');
+    setSelectedCategory('all');
+    setSelectedCustomer('all');
+    setCustomerSearch('');
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('he-IL', {
+      style: 'currency',
+      currency: 'ILS'
+    }).format(value);
+  };
+
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat('he-IL').format(value);
+  };
+
   // Colors for charts
   const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 space-y-6 animate-fade-in">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-6 w-48" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="border-destructive">
+          <CardContent className="text-center p-6">
+            <div className="text-destructive">
+              <h2 className="text-xl font-bold mb-2">שגיאה בטעינת הנתונים</h2>
+              <p className="text-muted-foreground">{error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
