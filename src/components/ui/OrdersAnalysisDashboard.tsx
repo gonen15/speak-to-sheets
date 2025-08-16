@@ -193,29 +193,33 @@ export default function OrdersAnalysisDashboard() {
     return { avgOrderValue, topCustomer, topProduct };
   }, [summary.totalOrders, summary.totalRevenue, summary.byCustomer, summary.byProduct]);
 
-  const topProducts = Object.entries(summary.byProduct)
-    .map(([product, data]) => ({
-      name: product,
-      quantity: data.quantity,
-      revenue: data.revenue,
-      orders: data.orders,
-      value: activeTab === 'quantity' ? data.quantity : data.revenue
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8);
+  const topProducts = useMemo(() => {
+    return Object.entries(summary.byProduct)
+      .map(([product, data]) => ({
+        name: product,
+        quantity: data.quantity,
+        revenue: data.revenue,
+        orders: data.orders,
+        value: activeTab === 'quantity' ? data.quantity : data.revenue
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [summary.byProduct, activeTab]);
 
-  const topCustomers = Object.entries(summary.byCustomer)
-    .map(([customer, data]) => ({
-      name: customer.length > 25 ? customer.substring(0, 25) + '...' : customer,
-      fullName: customer,
-      quantity: data.quantity,
-      revenue: data.revenue,
-      orders: data.orders,
-      products: data.products.length,
-      value: activeTab === 'quantity' ? data.quantity : data.revenue
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8);
+  const topCustomers = useMemo(() => {
+    return Object.entries(summary.byCustomer)
+      .map(([customer, data]) => ({
+        name: customer.length > 25 ? customer.substring(0, 25) + '...' : customer,
+        fullName: customer,
+        quantity: data.quantity,
+        revenue: data.revenue,
+        orders: data.orders,
+        products: data.products.length,
+        value: activeTab === 'quantity' ? data.quantity : data.revenue
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [summary.byCustomer, activeTab]);
 
   // Colors for charts
   const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
