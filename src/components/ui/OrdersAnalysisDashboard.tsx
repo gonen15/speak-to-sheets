@@ -86,6 +86,21 @@ export default function OrdersAnalysisDashboard() {
     return count;
   }, [selectedYear, selectedMonth, selectedCategory, selectedProduct, selectedCustomer, customerSearch, productSearch]);
 
+  // Product name mapping function
+  const getProductName = (productCode: string): string => {
+    const productNameMapping: Record<string, string> = {
+      "8437020396011": "בית תבלינות מ.ח",
+      "8437020396028": "נטף פלוס בע\"מ", 
+      "5027324003277": "סוכני סיים קנדילו",
+      "5027324001181": "צרינה של סובלנות",
+      "5027324001860": "יאנגי דלי ישראל",
+      "5027324001839": "לייב בע\"מ",
+      "8437020396011-12C": "קפואים פלוס בע\"מ",
+      "8437020396028-12C": "מעיין נציונות שיווק"
+    };
+    return productNameMapping[productCode] || productCode;
+  };
+
   // Get summary data for filtered orders
   const getSummaryDataForFiltered = () => {
     const summary = {
