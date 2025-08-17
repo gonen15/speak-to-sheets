@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 export default function OrdersAnalysisDashboard() {
   const { orders, loading, error } = useOrdersData();
-  const [selectedYear, setSelectedYear] = useState<string>('2025');
+  const [selectedYear, setSelectedYear] = useState<string>('2024');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('combined');
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
@@ -252,7 +252,7 @@ export default function OrdersAnalysisDashboard() {
 
   // Reset all filters
   const resetFilters = () => {
-    setSelectedYear('2025');
+    setSelectedYear('2024');
     setSelectedMonth('all');
     setSelectedCategory('combined');
     setSelectedProduct('all');
