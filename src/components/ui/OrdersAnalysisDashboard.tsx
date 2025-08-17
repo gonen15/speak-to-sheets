@@ -15,10 +15,9 @@ import { toast } from "sonner";
 
 export default function OrdersAnalysisDashboard() {
   const { orders, loading, error } = useOrdersData();
-  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('2025');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('combined');
-  const [showMonthFilter, setShowMonthFilter] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
   const [customerSearch, setCustomerSearch] = useState<string>('');
@@ -54,11 +53,26 @@ export default function OrdersAnalysisDashboard() {
   }, [orders]);
 
   const availableMonths = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => ({
-      value: String(i + 1),
-      label: monthNames[String(i + 1) as keyof typeof monthNames]
+    if (selectedYear === 'all') {
+      return Array.from({ length: 12 }, (_, i) => ({
+        value: String(i + 1),
+        label: monthNames[String(i + 1) as keyof typeof monthNames]
+      }));
+    }
+    
+    // Get months that have data for the selected year
+    const monthsWithData = [...new Set(
+      orders
+        .filter(order => order.year === selectedYear)
+        .map(order => order.month)
+        .filter(Boolean)
+    )].sort((a, b) => parseInt(a) - parseInt(b));
+    
+    return monthsWithData.map(month => ({
+      value: month,
+      label: monthNames[month as keyof typeof monthNames]
     }));
-  }, []);
+  }, [selectedYear, orders]);
 
   const availableProducts = useMemo(() => {
     const products = [...new Set(orders.map(order => order.productCode))].filter(Boolean).sort();
@@ -238,14 +252,13 @@ export default function OrdersAnalysisDashboard() {
 
   // Reset all filters
   const resetFilters = () => {
-    setSelectedYear('all');
+    setSelectedYear('2025');
     setSelectedMonth('all');
     setSelectedCategory('combined');
     setSelectedProduct('all');
     setSelectedCustomer('all');
     setCustomerSearch('');
     setProductSearch('');
-    setShowMonthFilter(false);
   };
 
   const formatCurrency = (value: number) => {
@@ -375,43 +388,52 @@ export default function OrdersAnalysisDashboard() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    תקופה
+                    שנת פעילות
                   </label>
                   <Select value={selectedYear} onValueChange={(value) => {
                     setSelectedYear(value);
-                    setShowMonthFilter(value !== 'all');
-                    if (value === 'all') {
-                      setSelectedMonth('all');
-                    }
+                    // Reset month when changing year to avoid invalid combinations
+                    setSelectedMonth('all');
                   }}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="בחר תקופה" />
+                      <SelectValue placeholder="בחר שנה" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">כל התקופה</SelectItem>
+                      <SelectItem value="all">כל השנים</SelectItem>
                       {availableYears.map(year => (
-                        <SelectItem key={year} value={year}>שנת {year}</SelectItem>
+                        <SelectItem key={year} value={year}>{year}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {showMonthFilter && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">חודש בשנת {selectedYear}</label>
-                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="בחר חודש" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">כל החודשים</SelectItem>
-                         {availableMonths.map(month => (
-                           <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
-                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    חודש פעילות
+                    {selectedYear !== 'all' && (
+                      <span className="text-xs text-muted-foreground mr-2">
+                        (בשנת {selectedYear})
+                      </span>
+                    )}
+                  </label>
+                  <Select 
+                    value={selectedMonth} 
+                    onValueChange={setSelectedMonth}
+                    disabled={selectedYear === 'all'}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedYear === 'all' ? 'בחר שנה תחילה' : 'בחר חודש'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {selectedYear === 'all' ? 'כל החודשים' : `כל חודשי ${selectedYear}`}
+                      </SelectItem>
+                      {availableMonths.map(month => (
+                        <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                  <div className="space-y-2">
                    <label className="text-sm font-medium flex items-center gap-2">
