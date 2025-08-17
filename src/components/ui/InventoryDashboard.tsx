@@ -8,17 +8,22 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Package, AlertTriangle, TrendingUp, TrendingDown, Calendar, Search, BarChart3, Eye } from "lucide-react";
 
-// Mock inventory data based on the uploaded image structure
+// Mock inventory data - will be replaced with real data from Google Sheet
 const inventoryData = [
-  { product: "בית תבלינות מ.ח", category: "תבלינים", currentStock: 150, averageMonthlySales: 45, daysOfInventory: 100, status: "good" },
-  { product: "נטף פלוס בע\"מ", category: "משקאות", currentStock: 200, averageMonthlySales: 80, daysOfInventory: 75, status: "good" },
-  { product: "סוכני סיים קנדילו ימוא ושי...", category: "מתוקים", currentStock: 50, averageMonthlySales: 25, daysOfInventory: 60, status: "medium" },
-  { product: "צרינה של סובלנות לשעון", category: "אביזרים", currentStock: 30, averageMonthlySales: 15, daysOfInventory: 60, status: "medium" },
-  { product: "יאנגי דלי ישראל בע\"מ", category: "מזון מוכן", currentStock: 80, averageMonthlySales: 120, daysOfInventory: 20, status: "critical" },
-  { product: "לייב בע\"מ", category: "משקאות", currentStock: 120, averageMonthlySales: 90, daysOfInventory: 40, status: "medium" },
-  { product: "קפואים פלוס בע\"מ", category: "קפואים", currentStock: 300, averageMonthlySales: 200, daysOfInventory: 45, status: "medium" },
-  { product: "מעיין נציונות שיווק ממתק...", category: "מתוקים", currentStock: 90, averageMonthlySales: 60, daysOfInventory: 45, status: "medium" },
-];
+  { brand: "בית תבלינות", product: "תבלין כללי", category: "תבלינים", currentStock: 150, averageMonthlySales: 45, daysOfInventory: 100, status: "good" },
+  { brand: "נטף פלוס", product: "משקה קל", category: "משקאות", currentStock: 200, averageMonthlySales: 80, daysOfInventory: 75, status: "good" },
+  { brand: "סוכני סיים", product: "קנדילו ממתק", category: "מתוקים", currentStock: 50, averageMonthlySales: 25, daysOfInventory: 60, status: "medium" },
+  { brand: "צרינה", product: "אביזר שעון", category: "אביזרים", currentStock: 30, averageMonthlySales: 15, daysOfInventory: 60, status: "medium" },
+  { brand: "יאנגי דלי", product: "מזון מוכן", category: "מזון מוכן", currentStock: 80, averageMonthlySales: 120, daysOfInventory: 20, status: "critical" },
+  { brand: "לייב", product: "משקה אנרגיה", category: "משקאות", currentStock: 120, averageMonthlySales: 90, daysOfInventory: 40, status: "medium" },
+  { brand: "קפואים פלוס", product: "מזון קפוא", category: "קפואים", currentStock: 300, averageMonthlySales: 200, daysOfInventory: 45, status: "medium" },
+  { brand: "מעיין נציונות", product: "שיווק ממתק", category: "מתוקים", currentStock: 90, averageMonthlySales: 60, daysOfInventory: 45, status: "medium" },
+].map(item => {
+  // Calculate accurate days of inventory: current stock / average monthly sales
+  const accurateDays = Math.round(item.currentStock / item.averageMonthlySales * 30);
+  const status = accurateDays <= 30 ? 'critical' : accurateDays <= 60 ? 'medium' : 'good';
+  return { ...item, daysOfInventory: accurateDays, status };
+});
 
 const productNameMapping: Record<string, string> = {
   "8437020396011": "בית תבלינות מ.ח",
@@ -33,6 +38,7 @@ const productNameMapping: Record<string, string> = {
 
 export default function InventoryDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedBrand, setSelectedBrand] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchProduct, setSearchProduct] = useState<string>('');
   const [sortBy, setSortBy] = useState<'daysOfInventory' | 'currentStock' | 'averageMonthlySales'>('daysOfInventory');
@@ -40,17 +46,19 @@ export default function InventoryDashboard() {
   const filteredInventory = useMemo(() => {
     return inventoryData.filter(item => {
       if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
+      if (selectedBrand !== 'all' && item.brand !== selectedBrand) return false;
       if (selectedStatus !== 'all' && item.status !== selectedStatus) return false;
-      if (searchProduct && !item.product.toLowerCase().includes(searchProduct.toLowerCase())) return false;
+      if (searchProduct && !item.product.toLowerCase().includes(searchProduct.toLowerCase()) && !item.brand.toLowerCase().includes(searchProduct.toLowerCase())) return false;
       return true;
     }).sort((a, b) => {
       if (sortBy === 'daysOfInventory') return a.daysOfInventory - b.daysOfInventory;
       if (sortBy === 'currentStock') return b.currentStock - a.currentStock;
       return b.averageMonthlySales - a.averageMonthlySales;
     });
-  }, [selectedCategory, selectedStatus, searchProduct, sortBy]);
+  }, [selectedCategory, selectedBrand, selectedStatus, searchProduct, sortBy]);
 
   const categories = [...new Set(inventoryData.map(item => item.category))];
+  const brands = [...new Set(inventoryData.map(item => item.brand))];
   
   const summaryStats = useMemo(() => {
     const critical = filteredInventory.filter(item => item.daysOfInventory <= 30).length;
@@ -98,7 +106,7 @@ export default function InventoryDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">קטגוריה</label>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -109,6 +117,21 @@ export default function InventoryDashboard() {
                   <SelectItem value="all">כל הקטגוריות</SelectItem>
                   {categories.map(category => (
                     <SelectItem key={category} value={category}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">מותג</label>
+              <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                <SelectTrigger>
+                  <SelectValue placeholder="בחר מותג" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">כל המותגים</SelectItem>
+                  {brands.map(brand => (
+                    <SelectItem key={brand} value={brand}>{brand}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -144,9 +167,9 @@ export default function InventoryDashboard() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">חיפוש מוצר</label>
+              <label className="text-sm font-medium">חיפוש מוצר/מותג</label>
               <Input
-                placeholder="הקלד שם מוצר..."
+                placeholder="הקלד שם מוצר או מותג..."
                 value={searchProduct}
                 onChange={(e) => setSearchProduct(e.target.value)}
                 className="w-full"
@@ -288,10 +311,11 @@ export default function InventoryDashboard() {
             <table className="w-full table-auto">
               <thead>
                 <tr className="border-b">
+                  <th className="text-right p-2">מותג</th>
                   <th className="text-right p-2">מוצר</th>
                   <th className="text-right p-2">קטגוריה</th>
                   <th className="text-right p-2">כמות במלאי</th>
-                  <th className="text-right p-2">מכירות חודשיות</th>
+                  <th className="text-right p-2">מכירות חודשיות ממוצעות</th>
                   <th className="text-right p-2">ימי מלאי</th>
                   <th className="text-right p-2">סטטוס</th>
                 </tr>
@@ -299,7 +323,8 @@ export default function InventoryDashboard() {
               <tbody>
                 {filteredInventory.map((item, index) => (
                   <tr key={index} className="border-b hover:bg-muted/50">
-                    <td className="p-2 font-medium">{item.product}</td>
+                    <td className="p-2 font-medium">{item.brand}</td>
+                    <td className="p-2">{item.product}</td>
                     <td className="p-2">{item.category}</td>
                     <td className="p-2">{item.currentStock.toLocaleString()}</td>
                     <td className="p-2">{item.averageMonthlySales.toLocaleString()}</td>

@@ -18,6 +18,7 @@ export default function OrdersAnalysisDashboard() {
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('combined');
+  const [showMonthFilter, setShowMonthFilter] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
   const [customerSearch, setCustomerSearch] = useState<string>('');
@@ -178,7 +179,7 @@ export default function OrdersAnalysisDashboard() {
   const topProducts = useMemo(() => {
     return Object.entries(summary.byProduct)
       .map(([product, data]) => ({
-        name: product,
+        name: getProductName(product),
         quantity: data.quantity,
         revenue: data.revenue,
         orders: data.orders,
@@ -207,19 +208,29 @@ export default function OrdersAnalysisDashboard() {
   const getAIAdvice = async () => {
     setLoadingAdvice(true);
     try {
-      const { data, error } = await supabase.functions.invoke('dashboard-advisor', {
+      const response = await supabase.functions.invoke('dashboard-advisor', {
         body: {
           salesData: filteredOrders.slice(0, 100), // Send sample of data
           inventoryData: {} // Will be populated when inventory data is available
         }
       });
 
-      if (error) throw error;
-      setAiAdvice(data.advice);
-      setShowAdvice(true);
+      if (response.error) {
+        console.error('Supabase function error:', response.error);
+        throw response.error;
+      }
+
+      if (response.data?.advice) {
+        setAiAdvice(response.data.advice);
+        setShowAdvice(true);
+      } else {
+        console.error('No advice received:', response.data);
+        throw new Error('לא התקבל ייעוץ מהמערכת');
+      }
     } catch (error) {
       console.error('Error getting AI advice:', error);
-      toast.error('שגיאה בקבלת ייעוץ AI');
+      setAiAdvice('שגיאה בקבלת הייעוץ. אנא נסה שוב מאוחר יותר.');
+      setShowAdvice(true);
     } finally {
       setLoadingAdvice(false);
     }
@@ -234,6 +245,7 @@ export default function OrdersAnalysisDashboard() {
     setSelectedCustomer('all');
     setCustomerSearch('');
     setProductSearch('');
+    setShowMonthFilter(false);
   };
 
   const formatCurrency = (value: number) => {
@@ -344,7 +356,7 @@ export default function OrdersAnalysisDashboard() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Package className="w-4 h-4 text-purple-600" />
-                  <span>מוצר מוביל: <strong>{insights.topProduct.name || 'N/A'}</strong></span>
+                  <span>מוצר מוביל: <strong>{getProductName(insights.topProduct.name) || 'N/A'}</strong></span>
                 </div>
               </div>
             </CardContent>
@@ -363,35 +375,43 @@ export default function OrdersAnalysisDashboard() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    שנה
+                    תקופה
                   </label>
-                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <Select value={selectedYear} onValueChange={(value) => {
+                    setSelectedYear(value);
+                    setShowMonthFilter(value !== 'all');
+                    if (value === 'all') {
+                      setSelectedMonth('all');
+                    }
+                  }}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="בחר שנה" />
+                      <SelectValue placeholder="בחר תקופה" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">כל השנים</SelectItem>
+                      <SelectItem value="all">כל התקופה</SelectItem>
                       {availableYears.map(year => (
-                        <SelectItem key={year} value={year}>{year}</SelectItem>
+                        <SelectItem key={year} value={year}>שנת {year}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">חודש</label>
-                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="בחר חודש" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">כל החודשים</SelectItem>
-                       {availableMonths.map(month => (
-                         <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
-                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {showMonthFilter && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">חודש בשנת {selectedYear}</label>
+                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="בחר חודש" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">כל החודשים</SelectItem>
+                         {availableMonths.map(month => (
+                           <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                  <div className="space-y-2">
                    <label className="text-sm font-medium flex items-center gap-2">
@@ -403,7 +423,7 @@ export default function OrdersAnalysisDashboard() {
                        <SelectValue placeholder="בחר סוג תצוגה" />
                      </SelectTrigger>
                      <SelectContent>
-                       <SelectItem value="combined">תצוגה משותפת</SelectItem>
+                       <SelectItem value="combined">תצוגה משותפת (כמות + כסף)</SelectItem>
                        <SelectItem value="financial">תצוגה כספית</SelectItem>
                        <SelectItem value="quantity">תצוגה כמותית</SelectItem>
                      </SelectContent>
