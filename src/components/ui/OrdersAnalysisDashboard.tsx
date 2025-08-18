@@ -15,10 +15,16 @@ import { toast } from "sonner";
 
 export default function OrdersAnalysisDashboard() {
   const { orders, loading, error } = useOrdersData();
-  const [selectedYear, setSelectedYear] = useState<string>('2024');
+  const [selectedYear, setSelectedYear] = useState<string>('2025');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('combined');
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
+  const [drillDownLevel, setDrillDownLevel] = useState<'month' | 'week' | 'day' | 'transaction'>('month');
+  const [selectedDrillDown, setSelectedDrillDown] = useState<{
+    month?: string;
+    week?: string;
+    day?: string;
+  }>({});
   const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
   const [customerSearch, setCustomerSearch] = useState<string>('');
   const [productSearch, setProductSearch] = useState<string>('');
