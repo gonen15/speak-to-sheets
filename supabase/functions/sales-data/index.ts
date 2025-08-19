@@ -18,6 +18,15 @@ interface SalesTransaction {
   description: string;
 }
 
+interface OrderData {
+  orderNumber: string;
+  orderDate: string;
+  sales: number;
+  activityMonth: string;
+  activityYear: string;
+  productName: string;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -26,9 +35,8 @@ serve(async (req) => {
   try {
     const { level, year, month, week, day } = await req.json();
     
-    // Mock sales data based on the structure described
-    // In a real implementation, this would read from Google Sheets API
-    const salesData: SalesTransaction[] = generateMockSalesData();
+    // Fetch real sales data from Google Sheets
+    const salesData: SalesTransaction[] = await fetchRealSalesData();
     
     let filteredData = salesData;
     
@@ -98,70 +106,126 @@ serve(async (req) => {
   }
 });
 
-function generateMockSalesData(): SalesTransaction[] {
-  const data: SalesTransaction[] = [];
-  
-  const products = ['מוצר A', 'מוצר B', 'מוצר C', 'מוצר D'];
-  const brands = ['אפל', 'סמסונג', 'שיאומי', 'וואווי', 'אופו'];
-  const customers = ['לקוח א', 'לקוח ב', 'לקוח ג', 'לקוח ד'];
-  const statuses = ['הושלם', 'בטיפול', 'ממתין'];
-  
-  let id = 1;
-  
-  // Generate 2024 data (until row 1280)
-  for (let i = 0; i < 1280; i++) {
-    const randomDay = Math.floor(Math.random() * 365);
-    const date = new Date('2024-01-01');
-    date.setDate(date.getDate() + randomDay);
-    
-    data.push({
-      id: id.toString(),
-      date: date.toISOString().split('T')[0],
-      amount: Math.floor(Math.random() * 20000) + 500,
-      quantity: Math.floor(Math.random() * 100) + 5,
-      product: products[Math.floor(Math.random() * products.length)],
-      brand: brands[Math.floor(Math.random() * brands.length)],
-      customer: customers[Math.floor(Math.random() * customers.length)],
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      description: `תיאור עסקה ${id}`
-    });
-    id++;
+async function fetchRealSalesData(): Promise<SalesTransaction[]> {
+  const googleApiKey = Deno.env.get('GOOGLE_API_KEY');
+  if (!googleApiKey) {
+    throw new Error('Google API key not configured');
   }
+
+  const sheetId = '1GsGdNfcSU3QtqtiKUkdQiC4XXRp1DT-W5j55DSHPTxg';
+  const range = 'הזמנה!A:S'; // Range covering all relevant columns
   
-  // Generate 2025 data (from row 1281) - Total should be >12M NIS and 770,873 units until July
-  const targetSales = 12500000; // >12M NIS
-  const targetQuantity = 770873; // Total quantity
-  const daysUntilJuly = 212; // Days from Jan 1 to July 31, 2025
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${googleApiKey}`;
   
-  const avgSalesPerDay = targetSales / daysUntilJuly;
-  const avgQuantityPerDay = targetQuantity / daysUntilJuly;
-  
-  for (let day = 0; day < daysUntilJuly; day++) {
-    const date = new Date('2025-01-01');
-    date.setDate(date.getDate() + day);
-    
-    // Generate 1-3 transactions per day
-    const transactionsPerDay = Math.floor(Math.random() * 3) + 1;
-    const dailySales = avgSalesPerDay * (0.7 + Math.random() * 0.6); // ±30% variation
-    const dailyQuantity = avgQuantityPerDay * (0.7 + Math.random() * 0.6);
-    
-    for (let t = 0; t < transactionsPerDay; t++) {
-      data.push({
-        id: id.toString(),
-        date: date.toISOString().split('T')[0],
-        amount: Math.floor((dailySales / transactionsPerDay) * (0.5 + Math.random())),
-        quantity: Math.floor((dailyQuantity / transactionsPerDay) * (0.5 + Math.random())),
-        product: products[Math.floor(Math.random() * products.length)],
-        brand: brands[Math.floor(Math.random() * brands.length)],
-        customer: customers[Math.floor(Math.random() * customers.length)],
-        status: statuses[Math.floor(Math.random() * statuses.length)],
-        description: `תיאור עסקה ${id}`
-      });
-      id++;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Google Sheets data: ${response.statusText}`);
     }
+    
+    const data = await response.json();
+    const rows = data.values || [];
+    
+    if (rows.length < 2) {
+      throw new Error('No data found in the sheet');
+    }
+
+    // Skip header row, process data rows
+    const ordersMap = new Map<string, {
+      orderNumber: string;
+      orderDate: string;
+      totalSales: number;
+      items: Array<{
+        product: string;
+        sales: number;
+        activityMonth: string;
+        activityYear: string;
+      }>;
+    }>();
+
+    // Process rows (skip header)
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length < 19) continue; // Ensure we have enough columns
+      
+      const orderNumber = row[0]?.toString().trim(); // Column A
+      const orderDate = row[1]?.toString().trim(); // Column B
+      const sales = parseFloat(row[15]?.toString().replace(/[^\d.-]/g, '') || '0'); // Column P
+      const activityMonth = row[16]?.toString().trim(); // Column Q
+      const activityYear = row[17]?.toString().trim(); // Column R
+      const productName = row[18]?.toString().trim(); // Column S
+      
+      if (!orderNumber || !orderDate || !productName) continue;
+      
+      // Determine year based on row number (as specified by user)
+      let year = '2024';
+      if (i >= 1281) {
+        year = '2025';
+      }
+      
+      if (!ordersMap.has(orderNumber)) {
+        ordersMap.set(orderNumber, {
+          orderNumber,
+          orderDate,
+          totalSales: 0,
+          items: []
+        });
+      }
+      
+      const order = ordersMap.get(orderNumber)!;
+      order.totalSales += sales;
+      order.items.push({
+        product: productName,
+        sales,
+        activityMonth: activityMonth || '',
+        activityYear: activityYear || year
+      });
+    }
+
+    // Convert to SalesTransaction format
+    const salesData: SalesTransaction[] = [];
+    let transactionId = 1;
+
+    ordersMap.forEach((order) => {
+      // Parse date from DD/MM/YYYY format
+      let parsedDate: Date;
+      try {
+        const dateParts = order.orderDate.split('/');
+        if (dateParts.length === 3) {
+          const day = parseInt(dateParts[0]);
+          const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed
+          const year = parseInt(dateParts[2]);
+          parsedDate = new Date(year, month, day);
+        } else {
+          parsedDate = new Date(order.orderDate);
+        }
+      } catch {
+        parsedDate = new Date('2024-01-01');
+      }
+
+      salesData.push({
+        id: order.orderNumber,
+        date: parsedDate.toISOString().split('T')[0],
+        amount: order.totalSales,
+        quantity: order.items.length, // Number of items in the order
+        product: order.items.map(item => item.product).join(', '),
+        brand: order.items[0]?.product || 'לא ידוע',
+        customer: `לקוח ${transactionId}`,
+        status: 'הושלם',
+        description: `הזמנה ${order.orderNumber} - ${order.items.length} פריטים`
+      });
+      
+      transactionId++;
+    });
+
+    console.log(`Loaded ${salesData.length} orders from Google Sheets`);
+    return salesData;
+    
+  } catch (error) {
+    console.error('Error fetching Google Sheets data:', error);
+    // Fallback to empty data on error
+    return [];
   }
-  
-  return data;
 }
 
 function getWeekOfYear(date: Date): string {
