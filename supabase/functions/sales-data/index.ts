@@ -100,26 +100,57 @@ serve(async (req) => {
 
 function generateMockSalesData(): SalesTransaction[] {
   const data: SalesTransaction[] = [];
-  const startDate = new Date('2024-01-01');
-  const endDate = new Date('2025-12-31');
   
   const products = ['מוצר A', 'מוצר B', 'מוצר C', 'מוצר D'];
-  const brands = ['מותג 1', 'מותג 2', 'מותג 3'];
+  const brands = ['אפל', 'סמסונג', 'שיאומי', 'וואווי', 'אופו'];
   const customers = ['לקוח א', 'לקוח ב', 'לקוח ג', 'לקוח ד'];
   const statuses = ['הושלם', 'בטיפול', 'ממתין'];
   
   let id = 1;
   
-  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-    // Random number of transactions per day (0-5)
-    const transactionsPerDay = Math.floor(Math.random() * 6);
+  // Generate 2024 data (until row 1280)
+  for (let i = 0; i < 1280; i++) {
+    const randomDay = Math.floor(Math.random() * 365);
+    const date = new Date('2024-01-01');
+    date.setDate(date.getDate() + randomDay);
     
-    for (let i = 0; i < transactionsPerDay; i++) {
+    data.push({
+      id: id.toString(),
+      date: date.toISOString().split('T')[0],
+      amount: Math.floor(Math.random() * 20000) + 500,
+      quantity: Math.floor(Math.random() * 100) + 5,
+      product: products[Math.floor(Math.random() * products.length)],
+      brand: brands[Math.floor(Math.random() * brands.length)],
+      customer: customers[Math.floor(Math.random() * customers.length)],
+      status: statuses[Math.floor(Math.random() * statuses.length)],
+      description: `תיאור עסקה ${id}`
+    });
+    id++;
+  }
+  
+  // Generate 2025 data (from row 1281) - Total should be >12M NIS and 770,873 units until July
+  const targetSales = 12500000; // >12M NIS
+  const targetQuantity = 770873; // Total quantity
+  const daysUntilJuly = 212; // Days from Jan 1 to July 31, 2025
+  
+  const avgSalesPerDay = targetSales / daysUntilJuly;
+  const avgQuantityPerDay = targetQuantity / daysUntilJuly;
+  
+  for (let day = 0; day < daysUntilJuly; day++) {
+    const date = new Date('2025-01-01');
+    date.setDate(date.getDate() + day);
+    
+    // Generate 1-3 transactions per day
+    const transactionsPerDay = Math.floor(Math.random() * 3) + 1;
+    const dailySales = avgSalesPerDay * (0.7 + Math.random() * 0.6); // ±30% variation
+    const dailyQuantity = avgQuantityPerDay * (0.7 + Math.random() * 0.6);
+    
+    for (let t = 0; t < transactionsPerDay; t++) {
       data.push({
         id: id.toString(),
-        date: d.toISOString().split('T')[0],
-        amount: Math.floor(Math.random() * 10000) + 100,
-        quantity: Math.floor(Math.random() * 50) + 1,
+        date: date.toISOString().split('T')[0],
+        amount: Math.floor((dailySales / transactionsPerDay) * (0.5 + Math.random())),
+        quantity: Math.floor((dailyQuantity / transactionsPerDay) * (0.5 + Math.random())),
         product: products[Math.floor(Math.random() * products.length)],
         brand: brands[Math.floor(Math.random() * brands.length)],
         customer: customers[Math.floor(Math.random() * customers.length)],
