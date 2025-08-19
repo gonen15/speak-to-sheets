@@ -319,11 +319,11 @@ const Datasets = () => {
         onNavigateToDataset={(datasetId) => navigate(`/dashboards/dataset/${datasetId}`)}
       />
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Google Sheet (URL)</CardTitle>
-            <CardDescription>הדבק קישור של Google Sheets לייבוא הטאב הראשון</CardDescription>
+            <CardTitle>דוח מכירות</CardTitle>
+            <CardDescription>קובץ המכירות הראשי - נתוני עסקאות מפורטים</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-3" onSubmit={onImportGoogleSheet}>
@@ -331,15 +331,31 @@ const Datasets = () => {
                 <Label htmlFor="gsheet">Google Sheet URL</Label>
                 <Input id="gsheet" value={pilotUrl} onChange={(e)=>setPilotUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." />
               </div>
-              <Button type="submit" disabled={pilotBusy}>{pilotBusy ? "מייבא..." : "ייבוא"}</Button>
+              <Button type="submit" disabled={pilotBusy}>{pilotBusy ? "מייבא..." : "ייבוא דוח מכירות"}</Button>
             </form>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Upload CSV</CardTitle>
-            <CardDescription>Upload a CSV file. If the same name exists, you can replace its content.</CardDescription>
+            <CardTitle>מחירון</CardTitle>
+            <CardDescription>קובץ המחירון לחישוב הכנסות לפי מוצר ולקוח</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>מחירון זמין במערכת</Label>
+                <div className="text-sm text-muted-foreground">נתוני מחירון נטענים אוטומטית</div>
+              </div>
+              <Button variant="outline" disabled>מחירון פעיל</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>נתוני הזמנות</CardTitle>
+            <CardDescription>נתוני הזמנות נוספים ממקורות חיצוניים</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-3" onSubmit={onUploadCsv}>
@@ -350,38 +366,15 @@ const Datasets = () => {
                   name="file" 
                   type="file" 
                   accept=".csv,text/csv" 
-                  multiple
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length > 1) {
-                      setUploading(true);
-                      handleFiles(files).finally(() => setUploading(false));
-                    }
-                  }}
                   required 
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">Name (optional)</Label>
-                <Input id="name" name="name" placeholder="Dataset name" />
-              </div>
               <Button type="submit" disabled={uploading}>
-                {uploading ? "מעלה..." : "Upload"}
+                {uploading ? "מעלה..." : "העלה נתוני הזמנות"}
               </Button>
             </form>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Google Drive Folder</CardTitle>
-            <CardDescription>Paste a shared folder URL to import all Google Sheets and CSV files.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DriveImportPanel />
-          </CardContent>
-        </Card>
-
       </div>
 
       <div className="mt-10">

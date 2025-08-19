@@ -29,10 +29,7 @@ const AppHeader = () => {
             Executive
           </NavLink>
           <NavLink to="/datasets" className={linkClass}>
-            {t("datasets")}
-          </NavLink>
-          <NavLink to="/dashboards/master" className={linkClass}>
-            Master
+            מקורות נתונים
           </NavLink>
           <NavLink to="/settings" className={linkClass}>
             {t("settings")}
