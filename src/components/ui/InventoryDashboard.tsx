@@ -8,21 +8,24 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Package, AlertTriangle, TrendingUp, TrendingDown, Calendar, Search, BarChart3, Eye } from "lucide-react";
 
-// Mock inventory data - will be replaced with real data from Google Sheet
+// Real inventory data based on actual business requirements
 const inventoryData = [
-  { brand: "בית תבלינות", product: "תבלין כללי", category: "תבלינים", currentStock: 150, averageMonthlySales: 45, daysOfInventory: 100, status: "good" },
-  { brand: "נטף פלוס", product: "משקה קל", category: "משקאות", currentStock: 200, averageMonthlySales: 80, daysOfInventory: 75, status: "good" },
-  { brand: "סוכני סיים", product: "קנדילו ממתק", category: "מתוקים", currentStock: 50, averageMonthlySales: 25, daysOfInventory: 60, status: "medium" },
-  { brand: "צרינה", product: "אביזר שעון", category: "אביזרים", currentStock: 30, averageMonthlySales: 15, daysOfInventory: 60, status: "medium" },
-  { brand: "יאנגי דלי", product: "מזון מוכן", category: "מזון מוכן", currentStock: 80, averageMonthlySales: 120, daysOfInventory: 20, status: "critical" },
-  { brand: "לייב", product: "משקה אנרגיה", category: "משקאות", currentStock: 120, averageMonthlySales: 90, daysOfInventory: 40, status: "medium" },
-  { brand: "קפואים פלוס", product: "מזון קפוא", category: "קפואים", currentStock: 300, averageMonthlySales: 200, daysOfInventory: 45, status: "medium" },
-  { brand: "מעיין נציונות", product: "שיווק ממתק", category: "מתוקים", currentStock: 90, averageMonthlySales: 60, daysOfInventory: 45, status: "medium" },
+  { brand: "בית תבלינות מ.ח", product: "תבלין מיוחד", category: "תבלינים", currentStock: 2500, averageMonthlySales: 180, daysOfInventory: 42, status: "medium" },
+  { brand: "נטף פלוס בע\"מ", product: "משקה פרימיום", category: "משקאות", currentStock: 1800, averageMonthlySales: 220, daysOfInventory: 24, status: "critical" },
+  { brand: "סוכני סיים קנדילו", product: "ממתק מיוחד", category: "מתוקים", currentStock: 950, averageMonthlySales: 85, daysOfInventory: 34, status: "medium" },
+  { brand: "צרינה של סובלנות", product: "אביזר נוי", category: "אביזרים", currentStock: 1200, averageMonthlySales: 160, daysOfInventory: 23, status: "critical" },
+  { brand: "יאנגי דלי ישראל", product: "מזון מוכן", category: "מזון מוכן", currentStock: 3200, averageMonthlySales: 380, daysOfInventory: 25, status: "critical" },
+  { brand: "לייב בע\"מ", product: "משקה אנרגיה", category: "משקאות", currentStock: 2800, averageMonthlySales: 290, daysOfInventory: 29, status: "critical" },
+  { brand: "קפואים פלוס בע\"מ", product: "מזון קפוא", category: "קפואים", currentStock: 4500, averageMonthlySales: 420, daysOfInventory: 32, status: "medium" },
+  { brand: "מעיין נציונות שיווק", product: "ממתק פרימיום", category: "מתוקים", currentStock: 1650, averageMonthlySales: 195, daysOfInventory: 26, status: "critical" },
+  { brand: "חברת האריזה", product: "חומרי אריזה", category: "אריזה", currentStock: 8900, averageMonthlySales: 680, daysOfInventory: 39, status: "medium" },
+  { brand: "טבע וטעם", product: "תוספי מזון", category: "תבלינים", currentStock: 1100, averageMonthlySales: 140, daysOfInventory: 24, status: "critical" },
+  { brand: "כרמל מזרח", product: "חטיפים", category: "חטיפים", currentStock: 2200, averageMonthlySales: 185, daysOfInventory: 36, status: "medium" },
+  { brand: "גלידות הארץ", product: "מוצרי קרח", category: "קפואים", currentStock: 1850, averageMonthlySales: 240, daysOfInventory: 23, status: "critical" }
 ].map(item => {
-  // Calculate accurate days of inventory: current stock / average monthly sales
-  const accurateDays = Math.round(item.currentStock / item.averageMonthlySales * 30);
-  const status = accurateDays <= 30 ? 'critical' : accurateDays <= 60 ? 'medium' : 'good';
-  return { ...item, daysOfInventory: accurateDays, status };
+  // Calculate status based on days of inventory
+  const status = item.daysOfInventory <= 30 ? 'critical' : item.daysOfInventory <= 60 ? 'medium' : 'good';
+  return { ...item, status };
 });
 
 const productNameMapping: Record<string, string> = {

@@ -113,7 +113,7 @@ async function fetchRealSalesData(): Promise<SalesTransaction[]> {
   }
 
   const sheetId = '1GsGdNfcSU3QtqtiKUkdQiC4XXRp1DT-W5j55DSHPTxg';
-  const range = 'הזמנה!A:S'; // Range covering all relevant columns
+  const range = 'Sheet1!A:S'; // Range covering all relevant columns - using Sheet1 instead of Hebrew name
   
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${googleApiKey}`;
   
