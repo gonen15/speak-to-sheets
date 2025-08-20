@@ -110,37 +110,23 @@ async function fetchRealSalesData(): Promise<SalesTransaction[]> {
   const googleApiKey = Deno.env.get('GOOGLE_API_KEY');
   if (!googleApiKey) {
     console.error('Google API key not configured');
-    // Return fallback data when no API key
     return generateFallbackData();
   }
 
   const sheetId = '1GsGdNfcSU3QtqtiKUkdQiC4XXRp1DT-W5j55DSHPTxg';
+  const gid = '1710157144'; // The specific sheet ID from the URL
   
   try {
-    // First try with the original sheet name
-    let range = 'הזמנה!A:S';
-    let url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${googleApiKey}`;
+    // Try with the specific gid first
+    let url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A:S?key=${googleApiKey}`;
     
-    console.log('Trying to fetch from Google Sheets with Hebrew sheet name...');
-    let response = await fetch(url);
-    
-    if (!response.ok) {
-      console.log('Hebrew sheet name failed, trying Sheet1...');
-      // Try with Sheet1 if Hebrew name fails
-      range = 'Sheet1!A:S';
-      url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${googleApiKey}`;
-      response = await fetch(url);
-    }
+    console.log('Fetching from Google Sheets...');
+    const response = await fetch(url);
     
     if (!response.ok) {
-      console.log('Sheet1 failed, trying without range...');
-      // Try without specifying sheet name
-      url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A:S?key=${googleApiKey}`;
-      response = await fetch(url);
-    }
-    
-    if (!response.ok) {
-      console.error(`All attempts failed. Last response: ${response.status} ${response.statusText}`);
+      console.error(`Google Sheets API failed: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
       return generateFallbackData();
     }
     
@@ -154,94 +140,99 @@ async function fetchRealSalesData(): Promise<SalesTransaction[]> {
 
     console.log(`Found ${rows.length} rows in Google Sheets`);
 
-    // Process the real data from Google Sheets
+    // Process the real data from Google Sheets according to user specifications
     const ordersMap = new Map<string, {
       orderNumber: string;
       orderDate: string;
       totalSales: number;
+      year: string;
       items: Array<{
         product: string;
         sales: number;
-        activityMonth: string;
-        activityYear: string;
       }>;
     }>();
 
-    // Process rows (skip header)
-    for (let i = 1; i < rows.length; i++) {
+    // Process rows: 2-1280 = 2024, 1281+ = 2025
+    for (let i = 1; i < rows.length; i++) { // Skip header row
       const row = rows[i];
-      if (!row || row.length < 19) continue;
+      if (!row || row.length < 16) continue; // Need at least column P (index 15)
       
-      const orderNumber = row[0]?.toString().trim();
-      const orderDate = row[1]?.toString().trim();
-      const sales = parseFloat(row[15]?.toString().replace(/[^\d.-]/g, '') || '0');
-      const activityMonth = row[16]?.toString().trim();
-      const activityYear = row[17]?.toString().trim();
-      const productName = row[18]?.toString().trim();
+      const orderNumber = row[0]?.toString().trim(); // Column A - order number
+      const orderDate = row[1]?.toString().trim(); // Column B - order date  
+      const salesAmount = parseFloat(row[15]?.toString().replace(/[^\d.-]/g, '') || '0'); // Column P - sales
+      const productName = row[18]?.toString().trim() || 'מוצר'; // Column S - product name
       
-      if (!orderNumber || !orderDate || !productName) continue;
+      if (!orderNumber || salesAmount <= 0) continue;
       
-      // Determine year based on row number
-      let year = '2024';
-      if (i >= 1281) {
-        year = '2025';
-      }
+      // Determine year based on row number as specified by user
+      const year = (i >= 2 && i <= 1280) ? '2024' : '2025';
       
       if (!ordersMap.has(orderNumber)) {
         ordersMap.set(orderNumber, {
           orderNumber,
-          orderDate,
+          orderDate: orderDate || '01/01/2024',
           totalSales: 0,
+          year,
           items: []
         });
       }
       
       const order = ordersMap.get(orderNumber)!;
-      order.totalSales += sales;
+      order.totalSales += salesAmount;
       order.items.push({
         product: productName,
-        sales,
-        activityMonth: activityMonth || '',
-        activityYear: activityYear || year
+        sales: salesAmount
       });
     }
 
     // Convert to SalesTransaction format
     const salesData: SalesTransaction[] = [];
-    let transactionId = 1;
 
     ordersMap.forEach((order) => {
+      // Parse date from DD/MM/YYYY format or use default
       let parsedDate: Date;
       try {
-        const dateParts = order.orderDate.split('/');
-        if (dateParts.length === 3) {
-          const day = parseInt(dateParts[0]);
-          const month = parseInt(dateParts[1]) - 1;
-          const year = parseInt(dateParts[2]);
-          parsedDate = new Date(year, month, day);
+        if (order.orderDate && order.orderDate.includes('/')) {
+          const dateParts = order.orderDate.split('/');
+          if (dateParts.length === 3) {
+            const day = parseInt(dateParts[0]);
+            const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed
+            const year = parseInt(dateParts[2]);
+            parsedDate = new Date(year, month, day);
+          } else {
+            parsedDate = new Date(order.year === '2024' ? '2024-06-01' : '2025-04-01');
+          }
         } else {
-          parsedDate = new Date(order.orderDate);
+          parsedDate = new Date(order.year === '2024' ? '2024-06-01' : '2025-04-01');
         }
       } catch {
-        parsedDate = new Date('2024-01-01');
+        parsedDate = new Date(order.year === '2024' ? '2024-06-01' : '2025-04-01');
       }
 
       salesData.push({
         id: order.orderNumber,
         date: parsedDate.toISOString().split('T')[0],
         amount: order.totalSales,
-        quantity: order.items.length,
+        quantity: order.items.length, // Number of items in the order
         product: order.items.map(item => item.product).join(', '),
-        brand: order.items[0]?.product || 'לא ידוע',
-        customer: `לקוח ${transactionId}`,
+        brand: order.items[0]?.product || 'מותג לא ידוע',
+        customer: `לקוח ${order.orderNumber}`,
         status: 'הושלם',
         description: `הזמנה ${order.orderNumber} - ${order.items.length} פריטים`
       });
-      
-      transactionId++;
     });
 
-    console.log(`Successfully processed ${salesData.length} orders`);
+    console.log(`Successfully processed ${salesData.length} orders from Google Sheets`);
+    
+    // Log summary for verification
+    const total2024 = salesData.filter(s => s.date.startsWith('2024')).reduce((sum, s) => sum + s.amount, 0);
+    const total2025 = salesData.filter(s => s.date.startsWith('2025')).reduce((sum, s) => sum + s.amount, 0);
+    const quantity2025 = salesData.filter(s => s.date.startsWith('2025')).reduce((sum, s) => sum + s.quantity, 0);
+    
+    console.log(`2024 total sales: ${total2024.toLocaleString()} NIS`);
+    console.log(`2025 total sales: ${total2025.toLocaleString()} NIS`);
+    console.log(`2025 total quantity: ${quantity2025.toLocaleString()} units`);
+    
     return salesData;
     
   } catch (error) {
