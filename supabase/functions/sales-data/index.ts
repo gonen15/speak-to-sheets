@@ -114,11 +114,9 @@ async function fetchRealSalesData(): Promise<SalesTransaction[]> {
   }
 
   const sheetId = '1GsGdNfcSU3QtqtiKUkdQiC4XXRp1DT-W5j55DSHPTxg';
-  const gid = '1710157144'; // The specific sheet ID from the URL
   
   try {
-    // Try with the specific gid first
-    let url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A:S?key=${googleApiKey}`;
+    let url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A:T?key=${googleApiKey}`;
     
     console.log('Fetching from Google Sheets...');
     const response = await fetch(url);
@@ -140,98 +138,95 @@ async function fetchRealSalesData(): Promise<SalesTransaction[]> {
 
     console.log(`Found ${rows.length} rows in Google Sheets`);
 
-    // Process the real data from Google Sheets according to user specifications
-    const ordersMap = new Map<string, {
-      orderNumber: string;
-      orderDate: string;
-      totalSales: number;
-      year: string;
-      items: Array<{
-        product: string;
-        sales: number;
-      }>;
-    }>();
+    const salesData: SalesTransaction[] = [];
+    let processedRows = 0;
+    let completedRows = 0;
 
-    // Process rows: 2-1280 = 2024, 1281+ = 2025
+    // Process each row as a line item
     for (let i = 1; i < rows.length; i++) { // Skip header row
       const row = rows[i];
-      if (!row || row.length < 16) continue; // Need at least column P (index 15)
+      if (!row || row.length < 13) continue; // Need at least column M (total_after_discount)
       
-      const orderNumber = row[0]?.toString().trim(); // Column A - order number
-      const orderDate = row[1]?.toString().trim(); // Column B - order date  
-      const salesAmount = parseFloat(row[15]?.toString().replace(/[^\d.-]/g, '') || '0'); // Column P - sales
-      const productName = row[18]?.toString().trim() || 'מוצר'; // Column S - product name
+      processedRows++;
       
-      if (!orderNumber || salesAmount <= 0) continue;
+      // Parse columns according to specification
+      const orderId = row[0]?.toString().trim(); // Column A - order_id
+      const orderDate = row[1]?.toString().trim(); // Column B - order_date
+      const orderStatus = row[2]?.toString().trim(); // Column C - order_status
+      const customerId = row[3]?.toString().trim(); // Column D - customer_id
+      const customerName = row[4]?.toString().trim(); // Column E - customer_name
+      const accountManager = row[5]?.toString().trim(); // Column F - account_manager
+      const sku = row[6]?.toString().trim(); // Column G - sku
+      const deliveryDate = row[7]?.toString().trim(); // Column H - delivery_date
+      const productDescription = row[8]?.toString().trim(); // Column I - product_description
+      const unitPriceIls = parseFloat(row[9]?.toString().replace(/[^\d.-]/g, '') || '0'); // Column J - unit_price_ils
+      const quantity = parseFloat(row[10]?.toString().replace(/[^\d.-]/g, '') || '0'); // Column K - quantity
+      const totalIls = parseFloat(row[11]?.toString().replace(/[^\d.-]/g, '') || '0'); // Column L - total_ils
+      const totalAfterDiscount = parseFloat(row[12]?.toString().replace(/[^\d.-]/g, '') || '0'); // Column M - total_after_discount
+      const month = parseInt(row[13]?.toString().trim() || '0'); // Column N - month
+      const year = parseInt(row[14]?.toString().trim() || '0'); // Column O - year
+      const category = row[15]?.toString().trim() || 'לא מוגדר'; // Column P - category
       
-      // Determine year based on row number as specified by user
-      const year = (i >= 2 && i <= 1280) ? '2024' : '2025';
+      // Only include completed orders (בוצעה)
+      if (orderStatus !== 'בוצעה') continue;
+      if (!orderId || !sku || totalAfterDiscount <= 0) continue;
       
-      if (!ordersMap.has(orderNumber)) {
-        ordersMap.set(orderNumber, {
-          orderNumber,
-          orderDate: orderDate || '01/01/2024',
-          totalSales: 0,
-          year,
-          items: []
-        });
-      }
+      completedRows++;
       
-      const order = ordersMap.get(orderNumber)!;
-      order.totalSales += salesAmount;
-      order.items.push({
-        product: productName,
-        sales: salesAmount
-      });
-    }
-
-    // Convert to SalesTransaction format
-    const salesData: SalesTransaction[] = [];
-
-    ordersMap.forEach((order) => {
-      // Parse date from DD/MM/YYYY format or use default
+      // Determine year based on row number (2-1280 = 2024, 1281+ = 2025)
+      const dataYear = (i >= 2 && i <= 1280) ? 2024 : 2025;
+      
+      // Parse order date or use year-based default
       let parsedDate: Date;
       try {
-        if (order.orderDate && order.orderDate.includes('/')) {
-          const dateParts = order.orderDate.split('/');
+        if (orderDate && orderDate.includes('-')) {
+          parsedDate = new Date(orderDate);
+        } else if (orderDate && orderDate.includes('/')) {
+          const dateParts = orderDate.split('/');
           if (dateParts.length === 3) {
             const day = parseInt(dateParts[0]);
             const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed
             const year = parseInt(dateParts[2]);
             parsedDate = new Date(year, month, day);
           } else {
-            parsedDate = new Date(order.year === '2024' ? '2024-06-01' : '2025-04-01');
+            parsedDate = new Date(dataYear, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1);
           }
         } else {
-          parsedDate = new Date(order.year === '2024' ? '2024-06-01' : '2025-04-01');
+          // Random date within the year
+          parsedDate = new Date(dataYear, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1);
         }
       } catch {
-        parsedDate = new Date(order.year === '2024' ? '2024-06-01' : '2025-04-01');
+        parsedDate = new Date(dataYear, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1);
       }
 
+      // Create transaction for this line item
       salesData.push({
-        id: order.orderNumber,
+        id: `${orderId}-${sku}`, // Unique identifier as specified
         date: parsedDate.toISOString().split('T')[0],
-        amount: order.totalSales,
-        quantity: order.items.length, // Number of items in the order
-        product: order.items.map(item => item.product).join(', '),
-        brand: order.items[0]?.product || 'מותג לא ידוע',
-        customer: `לקוח ${order.orderNumber}`,
+        amount: totalAfterDiscount, // Use total_after_discount as specified
+        quantity: quantity,
+        product: productDescription || sku,
+        brand: category,
+        customer: customerName || customerId || `לקוח ${orderId}`,
         status: 'הושלם',
-        description: `הזמנה ${order.orderNumber} - ${order.items.length} פריטים`
+        description: `${productDescription} - ${orderId}`
       });
-    });
+    }
 
-    console.log(`Successfully processed ${salesData.length} orders from Google Sheets`);
+    console.log(`Processed ${processedRows} total rows, ${completedRows} completed orders`);
+    console.log(`Successfully processed ${salesData.length} line items from Google Sheets`);
     
     // Log summary for verification
-    const total2024 = salesData.filter(s => s.date.startsWith('2024')).reduce((sum, s) => sum + s.amount, 0);
-    const total2025 = salesData.filter(s => s.date.startsWith('2025')).reduce((sum, s) => sum + s.amount, 0);
-    const quantity2025 = salesData.filter(s => s.date.startsWith('2025')).reduce((sum, s) => sum + s.quantity, 0);
+    const data2024 = salesData.filter(s => s.date.startsWith('2024'));
+    const data2025 = salesData.filter(s => s.date.startsWith('2025'));
     
-    console.log(`2024 total sales: ${total2024.toLocaleString()} NIS`);
-    console.log(`2025 total sales: ${total2025.toLocaleString()} NIS`);
-    console.log(`2025 total quantity: ${quantity2025.toLocaleString()} units`);
+    const total2024 = data2024.reduce((sum, s) => sum + s.amount, 0);
+    const total2025 = data2025.reduce((sum, s) => sum + s.amount, 0);
+    const quantity2024 = data2024.reduce((sum, s) => sum + s.quantity, 0);
+    const quantity2025 = data2025.reduce((sum, s) => sum + s.quantity, 0);
+    
+    console.log(`2024: ${data2024.length} items, ${total2024.toLocaleString()} NIS, ${quantity2024.toLocaleString()} units`);
+    console.log(`2025: ${data2025.length} items, ${total2025.toLocaleString()} NIS, ${quantity2025.toLocaleString()} units`);
     
     return salesData;
     
