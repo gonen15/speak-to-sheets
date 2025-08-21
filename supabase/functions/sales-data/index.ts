@@ -116,9 +116,10 @@ async function fetchRealSalesData(): Promise<SalesTransaction[]> {
   const sheetId = '1GsGdNfcSU3QtqtiKUkdQiC4XXRp1DT-W5j55DSHPTxg';
   
   try {
-    let url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A:T?key=${googleApiKey}`;
+    // Read from specific sheet "נתוני בסיס" (gid=1710157144)
+    let url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/'נתוני בסיס'!A:T?key=${googleApiKey}`;
     
-    console.log('Fetching from Google Sheets...');
+    console.log('Fetching from Google Sheets - נתוני בסיס sheet (gid=1710157144)...');
     const response = await fetch(url);
     
     if (!response.ok) {
