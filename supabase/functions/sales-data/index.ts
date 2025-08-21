@@ -142,12 +142,23 @@ async function fetchRealSalesData(): Promise<SalesTransaction[]> {
     let processedRows = 0;
     let completedRows = 0;
 
+    console.log(`Total rows in sheet: ${rows.length}`);
+    console.log(`Processing rows 2-1280 as 2024, rows 1281+ as 2025`);
+
     // Process each row as a line item
     for (let i = 1; i < rows.length; i++) { // Skip header row
       const row = rows[i];
       if (!row || row.length < 13) continue; // Need at least column M (total_after_discount)
       
       processedRows++;
+      
+      // Determine year based on row number FIRST (as specified by user)
+      const dataYear = (i >= 2 && i <= 1280) ? 2024 : 2025;
+      
+      // Log every 200th row for debugging
+      if (i % 200 === 0) {
+        console.log(`Row ${i}: Year=${dataYear}, Content=${JSON.stringify(row.slice(0, 5))}`);
+      }
       
       // Parse columns according to specification
       const orderId = row[0]?.toString().trim(); // Column A - order_id
@@ -172,9 +183,6 @@ async function fetchRealSalesData(): Promise<SalesTransaction[]> {
       if (!orderId || !sku || totalAfterDiscount <= 0) continue;
       
       completedRows++;
-      
-      // Determine year based on row number (2-1280 = 2024, 1281+ = 2025)
-      const dataYear = (i >= 2 && i <= 1280) ? 2024 : 2025;
       
       // Parse order date or use year-based default
       let parsedDate: Date;
