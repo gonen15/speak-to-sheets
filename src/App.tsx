@@ -22,6 +22,7 @@ import DashboardView from "./pages/DashboardView";
 import { I18nProvider } from "./i18n/i18n";
 import { DataStoreProvider } from "./store/dataStore";
 import ExecutiveHub from "@/pages/ExecutiveHub";
+import Dashboard from "@/pages/Dashboard";
 
 import Library from "@/pages/Library";
 import DepartmentsDashboard from "@/pages/DepartmentsDashboard";
@@ -49,6 +50,7 @@ const App = () => {
                 <AppHeader />
                 <Routes>
                   <Route path="/" element={<Index />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/datasets" element={<Datasets />} />
                   <Route path="/datasets/:id" element={<DatasetDetail />} />
                   <Route path="/library" element={<Library />} />

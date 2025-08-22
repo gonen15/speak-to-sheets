@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import PageMeta from "@/components/common/PageMeta";
 import OrdersAnalysisDashboard from "@/components/ui/OrdersAnalysisDashboard";
 import InventoryDashboard from "@/components/ui/InventoryDashboard";
+import AIInsightsDashboard from "@/components/ui/AIInsightsDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Package, TrendingUp } from "lucide-react";
+import { BarChart3, Package, TrendingUp, Bot } from "lucide-react";
 
 export default function ExecutiveHub() {
   return (
@@ -19,8 +20,12 @@ export default function ExecutiveHub() {
             <h1 className="text-4xl font-bold">מרכז ניהול עליון</h1>
           </div>
           
-          <Tabs defaultValue="sales" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+          <Tabs defaultValue="ai-insights" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsTrigger value="ai-insights" className="flex items-center gap-2">
+                <Bot className="w-4 h-4" />
+                תובנות AI
+              </TabsTrigger>
               <TabsTrigger value="sales" className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
                 ניתוח מכירות
@@ -30,6 +35,10 @@ export default function ExecutiveHub() {
                 ניתוח מלאי
               </TabsTrigger>
             </TabsList>
+            
+            <TabsContent value="ai-insights">
+              <AIInsightsDashboard />
+            </TabsContent>
             
             <TabsContent value="sales">
               <OrdersAnalysisDashboard />
