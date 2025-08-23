@@ -1,240 +1,128 @@
-import { useState } from "react";
-import { format } from "date-fns";
-import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import React, { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, Clock, Tag } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const tasks = [
+interface Task {
+  id: number;
+  title: string;
+  description: string;
+  status: "Not Started" | "In Progress" | "Done";
+}
+
+const sampleTasks: Task[] = [
   {
-    title: "חיבור בוט WhatsApp",
-    status: "done" as const,
-    dueDate: "2025-08-21",
-    category: "AI",
-    insights: "השלמה מוצלחת של אינטגרציה עם WhatsApp API"
+    id: 1,
+    title: "Connect to Lovable",
+    description: "Ensure the app is connected via Magic Link.",
+    status: "Done",
   },
   {
-    title: "שדרוג תצוגת הדשבורד ב-Lovable",
-    status: "in_progress" as const,
-    dueDate: "2025-08-22",
-    category: "פיתוח",
-    insights: "התקדמות טובה - נדרש עוד עבודה על הרספונסיביות"
+    id: 2,
+    title: "Build dashboard layout",
+    description: "Create layout with navigation and sectioning.",
+    status: "In Progress",
   },
   {
-    title: "הכנסת גרף סטטוס משימות",
-    status: "open" as const,
-    dueDate: "2025-08-23",
-    category: "UI/UX",
-    insights: "ממתין לאישור עיצוב מהצוות"
+    id: 3,
+    title: "Design task cards",
+    description: "Add styling and status badges.",
+    status: "Not Started",
   },
-  {
-    title: "שיפור מודול ניתוח GPT",
-    status: "in_progress" as const,
-    dueDate: "2025-08-24",
-    category: "AI",
-    insights: "בדיקת ביצועים מראה שיפור של 25%"
-  },
-  {
-    title: "אופטימיזציה של מסד הנתונים",
-    status: "open" as const,
-    dueDate: "2025-08-26",
-    category: "Backend",
-    insights: "זיהוי צווארי בקבוק בשאילתות מורכבות"
-  },
-  {
-    title: "יישום מערכת התראות",
-    status: "done" as const,
-    dueDate: "2025-08-20",
-    category: "פיתוח",
-    insights: "פעילה בהצלחה עם 95% זמן פעילות"
-  }
 ];
 
-const statusVariants = {
-  "open": "muted",
-  "in_progress": "warning", 
-  "done": "success",
-} as const;
-
-const statusLabels = {
-  "open": "פתוח",
-  "in_progress": "בתהליך",
-  "done": "הושלם",
-} as const;
-
 export default function TasksDashboard() {
-  const [filter, setFilter] = useState("");
+  const [tasks, setTasks] = useState<Task[]>(sampleTasks);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDescription, setNewTaskDescription] = useState("");
+  const [newTaskStatus, setNewTaskStatus] = useState<Task["status"]>("Not Started");
 
-  const filteredTasks = tasks.filter((task) =>
-    task.title.toLowerCase().includes(filter.toLowerCase()) ||
-    task.category.toLowerCase().includes(filter.toLowerCase()) ||
-    statusLabels[task.status].toLowerCase().includes(filter.toLowerCase())
-  );
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
+  const addTask = () => {
+    if (!newTaskTitle.trim()) return;
+    const newTask: Task = {
+      id: tasks.length + 1,
+      title: newTaskTitle,
+      description: newTaskDescription,
+      status: newTaskStatus,
+    };
+    setTasks([...tasks, newTask]);
+    setNewTaskTitle("");
+    setNewTaskDescription("");
+    setNewTaskStatus("Not Started");
   };
 
-  const cardVariants = {
-    hidden: { 
-      opacity: 0, 
-      y: 20,
-      scale: 0.95
-    },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1
-    }
+  const runLovableAutomation = () => {
+    (window as any).Lovable?.runPrompt?.(`1. עדכן את כל לשוניות הדשבורד כך שיתבססו על הנתונים החדשים מה-CSV.
+2. ודא שלשונית "AI תובנות" מציגה מידע ייחודי בהתאם לניתוח נתוני המכירות.
+3. בלשונית "ניתוח מכירות" הוסף גרפים, פילטר לפי תאריכים וסיכום רווחים.
+4. בלשונית "מלאי" הוסף חיזוי חוסרים והתרעות על מוצרים מתקרבים לאפס.
+5. עדכן את Executive Summary עם תובנות מרכזיות, המלצות ומגמות.
+6. תקן שגיאות בקוד React.
+7. שמור גרסה חדשה בשם dashboard_v2 וודא שהשינויים זמינים בכל הדשבורד.`);
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="space-y-4">
-          <h1 className="text-3xl font-bold text-foreground">לוח משימות – CGC</h1>
-          <p className="text-muted-foreground">מעקב אחר התקדמות הפרויקטים</p>
-          
-          {/* Filter */}
+    <div className="p-6 space-y-6">
+      <h1 className="text-3xl font-bold">Task Dashboard</h1>
+
+      {/* כפתור עדכון אוטומטי */}
+      <Button
+        className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 px-4 rounded-xl"
+        onClick={runLovableAutomation}
+      >
+        עדכן דשבורד אוטומטית
+      </Button>
+
+      <div className="bg-card rounded-2xl shadow-sm border p-4">
+        <h2 className="text-xl font-semibold mb-2">Add New Task</h2>
+        <div className="grid gap-2">
           <Input
-            placeholder="חיפוש משימות לפי כותרת, קטגוריה או סטטוס..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="max-w-md"
+            placeholder="Task title"
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
           />
+          <Textarea
+            placeholder="Task description"
+            value={newTaskDescription}
+            onChange={(e) => setNewTaskDescription(e.target.value)}
+          />
+          <Select value={newTaskStatus} onValueChange={(value) => setNewTaskStatus(value as Task["status"])}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select task status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Not Started">Not Started</SelectItem>
+              <SelectItem value="In Progress">In Progress</SelectItem>
+              <SelectItem value="Done">Done</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={addTask}>Add Task</Button>
         </div>
+      </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">הושלמו</p>
-                  <p className="text-2xl font-bold text-success">
-                    {tasks.filter(t => t.status === 'done').length}
-                  </p>
-                </div>
-                <div className="w-8 h-8 bg-success/10 rounded-full flex items-center justify-center">
-                  <div className="w-3 h-3 bg-success rounded-full"></div>
-                </div>
-              </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {tasks.map((task) => (
+          <Card key={task.id} className="rounded-2xl border">
+            <CardContent className="p-4 space-y-2">
+              <h3 className="text-lg font-medium">{task.title}</h3>
+              <p className="text-sm text-muted-foreground">{task.description}</p>
+              <Badge
+                variant={
+                  task.status === "Done"
+                    ? "default"
+                    : task.status === "In Progress"
+                    ? "secondary"
+                    : "outline"
+                }
+              >
+                {task.status}
+              </Badge>
             </CardContent>
           </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">בתהליך</p>
-                  <p className="text-2xl font-bold text-warning">
-                    {tasks.filter(t => t.status === 'in_progress').length}
-                  </p>
-                </div>
-                <div className="w-8 h-8 bg-warning/10 rounded-full flex items-center justify-center">
-                  <div className="w-3 h-3 bg-warning rounded-full"></div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">פתוחות</p>
-                  <p className="text-2xl font-bold text-muted-foreground">
-                    {tasks.filter(t => t.status === 'open').length}
-                  </p>
-                </div>
-                <div className="w-8 h-8 bg-muted/20 rounded-full flex items-center justify-center">
-                  <div className="w-3 h-3 bg-muted-foreground rounded-full"></div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tasks Grid */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
-        >
-          {filteredTasks.map((task, index) => (
-            <motion.div key={`${task.title}-${index}`} variants={cardVariants}>
-              <Card className="h-full hover:shadow-lg transition-shadow duration-300 border border-border/50">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-lg font-semibold text-foreground line-clamp-2">
-                      {task.title}
-                    </CardTitle>
-                    <Badge variant={statusVariants[task.status]} className="shrink-0">
-                      {statusLabels[task.status]}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  {/* Category and Due Date */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Tag className="w-4 h-4" />
-                      <span>{task.category}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4" />
-                      <span>
-                        {format(new Date(task.dueDate), "d בMMMM yyyy", { 
-                          locale: undefined 
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Insights */}
-                  <div className="pt-2 border-t border-border/50">
-                    <div className="flex items-start gap-2">
-                      <Clock className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {task.insights}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Empty State */}
-        {filteredTasks.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-12"
-          >
-            <div className="w-16 h-16 mx-auto mb-4 bg-muted/20 rounded-full flex items-center justify-center">
-              <Tag className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              לא נמצאו משימות
-            </h3>
-            <p className="text-muted-foreground">
-              נסה לשנות את מילות החיפוש או לנקות את הפילטר
-            </p>
-          </motion.div>
-        )}
+        ))}
       </div>
     </div>
   );
