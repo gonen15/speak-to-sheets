@@ -23,6 +23,7 @@ import { I18nProvider } from "./i18n/i18n";
 import { DataStoreProvider } from "./store/dataStore";
 import ExecutiveHub from "@/pages/ExecutiveHub";
 import Dashboard from "@/pages/Dashboard";
+import TasksDashboard from "@/pages/TasksDashboard";
 
 import Library from "@/pages/Library";
 import DepartmentsDashboard from "@/pages/DepartmentsDashboard";
@@ -63,6 +64,7 @@ const App = () => {
                   <Route path="/dashboards/builder" element={<DashboardBuilder/>} />
                   <Route path="/dashboards/view" element={<DashboardView/>} />
                   <Route path="/executive" element={<ExecutiveHub/>} />
+                  <Route path="/tasks" element={<TasksDashboard/>} />
                   <Route path="/chat" element={<></>} />
                   <Route path="/settings" element={<Settings />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

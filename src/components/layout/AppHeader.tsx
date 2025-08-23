@@ -28,6 +28,9 @@ const AppHeader = () => {
           <NavLink to="/executive" className={linkClass}>
             Executive
           </NavLink>
+          <NavLink to="/tasks" className={linkClass}>
+            משימות
+          </NavLink>
           <NavLink to="/datasets" className={linkClass}>
             מקורות נתונים
           </NavLink>
