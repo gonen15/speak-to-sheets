@@ -4,7 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Task {
   id: number;
@@ -68,7 +74,7 @@ export default function TasksDashboard() {
     <div className="p-6 space-y-6">
       <h1 className="text-3xl font-bold">Task Dashboard</h1>
 
-      {/* כפתור עדכון אוטומטי */}
+      {/* כפתור אוטומציה */}
       <Button
         className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 px-4 rounded-xl"
         onClick={runLovableAutomation}
@@ -89,7 +95,10 @@ export default function TasksDashboard() {
             value={newTaskDescription}
             onChange={(e) => setNewTaskDescription(e.target.value)}
           />
-          <Select value={newTaskStatus} onValueChange={(value) => setNewTaskStatus(value as Task["status"])}>
+          <Select
+            value={newTaskStatus}
+            onValueChange={(value) => setNewTaskStatus(value as Task["status"])}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select task status" />
             </SelectTrigger>
