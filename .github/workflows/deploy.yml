@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'src/pages/MasterDashboard.tsx'
+      - 'src/pages/Dashboard.tsx'
+      - 'src/components/ui/**'
 
 jobs:
   build:

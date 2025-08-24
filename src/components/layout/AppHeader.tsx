@@ -31,6 +31,9 @@ const AppHeader = () => {
           <NavLink to="/tasks" className={linkClass}>
             משימות
           </NavLink>
+          <NavLink to="/master-dashboard" className={linkClass}>
+            דשבורד מתקדם
+          </NavLink>
           <NavLink to="/datasets" className={linkClass}>
             מקורות נתונים
           </NavLink>
