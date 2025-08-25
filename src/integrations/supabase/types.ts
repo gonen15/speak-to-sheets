@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -148,6 +148,24 @@ export type Database = {
           name?: string
           ref_id?: string
           source?: string
+        }
+        Relationships: []
+      }
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          val: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          val: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          val?: string
         }
         Relationships: []
       }
@@ -510,6 +528,45 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory: {
+        Row: {
+          average_monthly_sales: number | null
+          brand: string | null
+          category: string | null
+          created_at: string
+          created_by: string | null
+          current_stock: number
+          id: string
+          minimum_stock: number
+          product_name: string
+          updated_at: string
+        }
+        Insert: {
+          average_monthly_sales?: number | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_stock?: number
+          id?: string
+          minimum_stock?: number
+          product_name: string
+          updated_at?: string
+        }
+        Update: {
+          average_monthly_sales?: number | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_stock?: number
+          id?: string
+          minimum_stock?: number
+          product_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       monday_board_mappings: {
         Row: {
           board_id: number
@@ -731,6 +788,102 @@ export type Database = {
           unchanged_rows?: number | null
           updated_at?: string
           updated_rows?: number | null
+        }
+        Relationships: []
+      }
+      sales_data: {
+        Row: {
+          account_manager: string | null
+          category: string | null
+          customer_id: string | null
+          customer_name: string | null
+          delivery_date: string | null
+          month: number | null
+          order_date: string | null
+          order_id: string | null
+          order_status: string | null
+          product_description: string | null
+          quantity: number | null
+          sku: string | null
+          total_after_discount: number | null
+          total_eur: number | null
+          total_ils: number | null
+          total_order_currency: number | null
+          unit_price_ils: number | null
+          unit_price_raw: number | null
+          year: number | null
+        }
+        Insert: {
+          account_manager?: string | null
+          category?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          delivery_date?: string | null
+          month?: number | null
+          order_date?: string | null
+          order_id?: string | null
+          order_status?: string | null
+          product_description?: string | null
+          quantity?: number | null
+          sku?: string | null
+          total_after_discount?: number | null
+          total_eur?: number | null
+          total_ils?: number | null
+          total_order_currency?: number | null
+          unit_price_ils?: number | null
+          unit_price_raw?: number | null
+          year?: number | null
+        }
+        Update: {
+          account_manager?: string | null
+          category?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          delivery_date?: string | null
+          month?: number | null
+          order_date?: string | null
+          order_id?: string | null
+          order_status?: string | null
+          product_description?: string | null
+          quantity?: number | null
+          sku?: string | null
+          total_after_discount?: number | null
+          total_eur?: number | null
+          total_ils?: number | null
+          total_order_currency?: number | null
+          unit_price_ils?: number | null
+          unit_price_raw?: number | null
+          year?: number | null
+        }
+        Relationships: []
+      }
+      saved_filters: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          dashboard_type: string
+          filter_data: Json
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          dashboard_type?: string
+          filter_data?: Json
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          dashboard_type?: string
+          filter_data?: Json
+          id?: string
+          name?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1014,6 +1167,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_dashboards: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          owner: string
+          updated_at: string
+        }
+        Insert: {
+          config: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          owner?: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          owner?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_prefs: {
         Row: {
           id: string
@@ -1055,6 +1238,36 @@ export type Database = {
       }
     }
     Views: {
+      dataset_rows_flat: {
+        Row: {
+          dataset_id: string | null
+          row_json: Json | null
+        }
+        Insert: {
+          dataset_id?: string | null
+          row_json?: Json | null
+        }
+        Update: {
+          dataset_id?: string | null
+          row_json?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_rows_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "master_flat"
+            referencedColumns: ["dataset_id"]
+          },
+          {
+            foreignKeyName: "dataset_rows_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       master_flat: {
         Row: {
           amount: number | null
@@ -1094,18 +1307,65 @@ export type Database = {
           },
         ]
       }
+      vw_kpi_totals: {
+        Row: {
+          amount_total_ils: number | null
+          avg_order: number | null
+          orders: number | null
+          rows_count: number | null
+        }
+        Relationships: []
+      }
+      vw_sales_by_month: {
+        Row: {
+          amount_total_ils: number | null
+          month: number | null
+          orders: number | null
+          year: number | null
+        }
+        Relationships: []
+      }
+      vw_sales_by_status: {
+        Row: {
+          amount_total_ils: number | null
+          order_status: string | null
+          orders: number | null
+        }
+        Relationships: []
+      }
+      vw_sales_src: {
+        Row: {
+          amount_nis: number | null
+          customer_name: string | null
+          month: number | null
+          order_date: string | null
+          order_id: string | null
+          order_status: string | null
+          sales_owner: string | null
+          year: number | null
+        }
+        Relationships: []
+      }
+      vw_top_customers: {
+        Row: {
+          amount_total_ils: number | null
+          customer_name: string | null
+          orders: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       aggregate_dataset: {
         Args: {
           p_dataset_id: string
-          p_metrics: string[]
-          p_dimensions?: string[]
-          p_filters?: Json
+          p_date_field?: string
           p_date_from?: string
           p_date_to?: string
-          p_date_field?: string
+          p_dimensions?: string[]
+          p_filters?: Json
           p_limit?: number
+          p_metrics: string[]
         }
         Returns: {
           rows: Json
@@ -1115,13 +1375,13 @@ export type Database = {
       aggregate_items: {
         Args: {
           p_board_id: number
-          p_metrics: string[]
-          p_dimensions: string[]
-          p_filters?: Json
+          p_date_field?: string
           p_date_from?: string
           p_date_to?: string
-          p_date_field?: string
+          p_dimensions: string[]
+          p_filters?: Json
           p_limit?: number
+          p_metrics: string[]
         }
         Returns: {
           rows: Json[]
@@ -1130,12 +1390,12 @@ export type Database = {
       }
       aggregate_master: {
         Args: {
-          p_metrics: string[]
-          p_dimensions?: string[]
-          p_filters?: Json
           p_date_from?: string
           p_date_to?: string
+          p_dimensions?: string[]
+          p_filters?: Json
           p_limit?: number
+          p_metrics: string[]
         }
         Returns: {
           rows: Json
@@ -1145,55 +1405,125 @@ export type Database = {
       aggregate_sales: {
         Args: {
           p_dataset: string
-          p_metrics: string[]
-          p_dimensions?: string[]
-          p_filters?: Json
           p_date_from?: string
           p_date_to?: string
+          p_dimensions?: string[]
+          p_filters?: Json
           p_limit?: number
+          p_metrics: string[]
         }
         Returns: {
           rows: Json
           sql: string
         }[]
       }
+      app_dataset_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       dataset_upsert_from_csv: {
         Args: {
-          p_name: string
           p_csv: string
-          p_source_url?: string
+          p_name: string
           p_replace?: boolean
+          p_source_url?: string
         }
         Returns: {
-          dataset_id: string
           action: string
+          dataset_id: string
         }[]
       }
       fetch_google_sheet: {
-        Args: { sheet_id: string; gid?: string }
+        Args: { gid?: string; sheet_id: string }
         Returns: {
           csv_data: string
         }[]
       }
+      get_app_setting: {
+        Args: { p_key: string }
+        Returns: string
+      }
+      get_default_user_dashboard: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_last_uploaded_dataset_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_uploaded_dataset_id: {
+        Args: { p_name: string }
+        Returns: string
+      }
+      get_user_dashboard: {
+        Args: { p_name: string }
+        Returns: Json
+      }
       has_role: {
-        Args: { _user_id: string; _role: string }
+        Args: { _role: string; _user_id: string }
         Returns: boolean
       }
+      list_user_dashboards: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          is_default: boolean
+          name: string
+          updated_at: string
+        }[]
+      }
       master_get: {
-        Args: { p_row: Json; p_dataset: string; p_target: string }
+        Args: { p_dataset: string; p_row: Json; p_target: string }
         Returns: string
       }
       monday_cv_text: {
-        Args: { colvals: Json; col_id: string }
+        Args: { col_id: string; colvals: Json }
         Returns: string
       }
       monday_cv_value: {
-        Args: { colvals: Json; col_id: string }
+        Args: { col_id: string; colvals: Json }
         Returns: Json
+      }
+      monthly_by_status: {
+        Args: { p_dataset: string }
+        Returns: {
+          rows: Json
+          sql: string
+        }[]
+      }
+      pick_amount: {
+        Args: { keys: string[]; p: Json }
+        Returns: number
+      }
+      pick_date: {
+        Args: { keys: string[]; p: Json }
+        Returns: string
+      }
+      pick_text: {
+        Args: { keys: string[]; p: Json }
+        Returns: string
       }
       revoke_dataset_access: {
         Args: { p_dataset_id: string; p_revoke?: boolean }
         Returns: undefined
+      }
+      save_user_dashboard: {
+        Args: { p_config: Json; p_is_default?: boolean; p_name: string }
+        Returns: string
+      }
+      set_app_setting: {
+        Args: { p_key: string; p_val: string }
+        Returns: undefined
+      }
+      top_customers: {
+        Args: { p_dataset: string; p_limit?: number }
+        Returns: {
+          rows: Json
+          sql: string
+        }[]
+      }
+      try_parse_date: {
+        Args: { s: string }
+        Returns: string
       }
     }
     Enums: {

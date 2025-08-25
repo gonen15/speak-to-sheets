@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import PageMeta from "@/components/common/PageMeta";
 import DateRangePicker from "@/components/ui/date-range-picker";
 import GlobalFilterBar from "@/components/ui/GlobalFilterBar";
@@ -36,11 +38,32 @@ interface DashboardFilters {
   status: string;
 }
 
+interface InventoryItem {
+  id: string;
+  product_name: string;
+  brand: string;
+  category: string;
+  current_stock: number;
+  minimum_stock: number;
+  status: 'critical' | 'warning' | 'good';
+}
+
+interface SavedFilter {
+  id: string;
+  name: string;
+  filter_data: any; // JSON from Supabase
+  dashboard_type: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
+
 interface FilteredDashboardData {
   salesTrends: Array<{ month: string; sales: number; orders: number; }>;
   profitabilityInsights: { margin: number; trend: number; };
   topCustomers: Array<{ name: string; sales: number; orders: number; }>;
-  lowStockAlerts: Array<{ product: string; current: number; minimum: number; status: string; }>;
+  lowStockAlerts: InventoryItem[];
+  inventoryData: InventoryItem[];
   kpiMetrics: {
     totalSales: number;
     totalOrders: number;
@@ -54,6 +77,9 @@ export default function MasterDashboard() {
   const [dashboardData, setDashboardData] = useState<FilteredDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [filterName, setFilterName] = useState("");
   
   const [filters, setFilters] = useState<DashboardFilters>({
     dateRange: { from: undefined, to: undefined },
@@ -65,15 +91,40 @@ export default function MasterDashboard() {
 
   useEffect(() => {
     loadDashboardData();
+    loadSavedFilters();
   }, []);
+
+  // Real-time data loading with filters
+  useEffect(() => {
+    loadDashboardData(filters);
+  }, [filters]);
 
   const loadDashboardData = async (appliedFilters?: Partial<DashboardFilters>) => {
     setLoading(true);
     setError(null);
     
     try {
-      // This would normally query Supabase with filters
-      // For now, using enhanced mock data that reflects filtering capabilities
+      // Load real inventory data from Supabase
+      const { data: inventoryData, error: inventoryError } = await supabase
+        .from('inventory')
+        .select('*')
+        .order('current_stock', { ascending: true });
+
+      if (inventoryError) throw inventoryError;
+
+      // Process inventory data with status calculation
+      const processedInventory = (inventoryData || []).map(item => ({
+        ...item,
+        status: item.current_stock < item.minimum_stock * 0.5 ? 'critical' : 
+               item.current_stock < item.minimum_stock ? 'warning' : 'good'
+      })) as InventoryItem[];
+
+      // Filter critical and warning items for alerts
+      const lowStockItems = processedInventory.filter(item => 
+        item.status === 'critical' || item.status === 'warning'
+      );
+
+      // Enhanced mock data with real inventory integration
       const mockData: FilteredDashboardData = {
         salesTrends: [
           { month: "ינואר 2025", sales: 2850000, orders: 142 },
@@ -94,12 +145,8 @@ export default function MasterDashboard() {
           { name: "יבואן גדול", sales: 1420000, orders: 41 },
           { name: "לקוח תעשייתי", sales: 980000, orders: 28 }
         ],
-        lowStockAlerts: [
-          { product: "פראנוי 150 גרם", current: 45, minimum: 100, status: "critical" },
-          { product: "מוצר פרמיום A", current: 78, minimum: 120, status: "warning" },
-          { product: "מוצר בסיסי B", current: 156, minimum: 200, status: "warning" },
-          { product: "מוצר מיוחד C", current: 23, minimum: 80, status: "critical" }
-        ],
+        lowStockAlerts: lowStockItems,
+        inventoryData: processedInventory,
         kpiMetrics: {
           totalSales: 14200000,
           totalOrders: 850,
@@ -113,13 +160,27 @@ export default function MasterDashboard() {
         ]
       };
 
-      await new Promise(resolve => setTimeout(resolve, 800));
       setDashboardData(mockData);
     } catch (err: any) {
       console.error('Error loading dashboard data:', err);
       setError(err.message || 'שגיאה בטעינת נתוני הדשבורד');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSavedFilters = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('saved_filters')
+        .select('*')
+        .eq('dashboard_type', 'master_dashboard')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setSavedFilters((data as SavedFilter[]) || []);
+    } catch (err) {
+      console.error('Error loading saved filters:', err);
     }
   };
 
@@ -136,18 +197,34 @@ export default function MasterDashboard() {
       status: "all"
     };
     setFilters(resetFilters);
-    loadDashboardData(resetFilters);
   };
 
   const handleSaveFilters = async () => {
+    if (!filterName.trim()) return;
+    
     try {
-      const { error } = await supabase.functions.invoke('filters-save', {
-        body: { key: 'master_dashboard_filters', value: filters }
-      });
+      const { error } = await supabase
+        .from('saved_filters')
+        .insert({
+          name: filterName,
+          filter_data: filters as any,
+          dashboard_type: 'master_dashboard'
+        });
+      
       if (error) throw error;
-      // Show success toast here
+      
+      setShowSaveDialog(false);
+      setFilterName("");
+      loadSavedFilters();
     } catch (err) {
       console.error('Error saving filters:', err);
+    }
+  };
+
+  const handleLoadSavedFilter = (filterId: string) => {
+    const savedFilter = savedFilters.find(f => f.id === filterId);
+    if (savedFilter) {
+      setFilters(savedFilter.filter_data as DashboardFilters);
     }
   };
 
@@ -174,6 +251,15 @@ export default function MasterDashboard() {
       case 'warning': return 'secondary';
       case 'good': return 'default';
       default: return 'outline';
+    }
+  };
+
+  const getStockStatusText = (status: string) => {
+    switch (status) {
+      case 'critical': return 'קריטי';
+      case 'warning': return 'אזהרה';
+      case 'good': return 'תקין';
+      default: return 'לא ידוע';
     }
   };
 
@@ -299,10 +385,46 @@ export default function MasterDashboard() {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="flex items-end">
-                  <Button onClick={handleApplyFilters} className="w-full">
-                    החל פילטרים
-                  </Button>
+                <div className="flex items-end gap-2 w-full">
+                  <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="flex-1">
+                        שמור פילטרים
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>שמירת פילטרים</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <Input
+                          placeholder="שם הפילטר"
+                          value={filterName}
+                          onChange={(e) => setFilterName(e.target.value)}
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                            ביטול
+                          </Button>
+                          <Button onClick={handleSaveFilters} disabled={!filterName.trim()}>
+                            שמור
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Select onValueChange={handleLoadSavedFilter}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="טען פילטרים שמורים" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {savedFilters.map((saved) => (
+                        <SelectItem key={saved.id} value={saved.id}>
+                          {saved.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>
@@ -458,32 +580,63 @@ export default function MasterDashboard() {
               </CardContent>
             </Card>
 
-            {/* Low Stock Alerts */}
+            {/* Inventory Management */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-warning" />
-                  התראות מלאי נמוך
+                  <Package className="w-5 h-5 text-primary" />
+                  ניהול מלאי
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {dashboardData.lowStockAlerts.map((item, index) => (
-                    <div key={item.product} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${getStockStatusColor(item.status)}`}></div>
-                        <div>
-                          <p className="font-medium">{item.product}</p>
-                          <p className="text-sm text-muted-foreground">
-                            נוכחי: {item.current} | מינימום: {item.minimum}
-                          </p>
+                <div className="space-y-4">
+                  {/* Critical alerts first */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-destructive">התראות קריטיות</h4>
+                    {dashboardData.lowStockAlerts
+                      .filter(item => item.status === 'critical')
+                      .slice(0, 3)
+                      .map((item) => (
+                        <div key={item.id} className="flex items-center justify-between p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                          <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 rounded-full bg-destructive"></div>
+                            <div>
+                              <p className="font-medium">{item.product_name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {item.brand} • נוכחי: {item.current_stock} | מינימום: {item.minimum_stock}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="destructive">
+                            {getStockStatusText(item.status)}
+                          </Badge>
                         </div>
-                      </div>
-                      <Badge variant={getStockStatusVariant(item.status)}>
-                        {item.status === 'critical' ? 'קריטי' : 'אזהרה'}
-                      </Badge>
-                    </div>
-                  ))}
+                      ))}
+                  </div>
+                  
+                  {/* Warning alerts */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-orange-600">אזהרות</h4>
+                    {dashboardData.lowStockAlerts
+                      .filter(item => item.status === 'warning')
+                      .slice(0, 2)
+                      .map((item) => (
+                        <div key={item.id} className="flex items-center justify-between p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                          <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                            <div>
+                              <p className="font-medium">{item.product_name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {item.brand} • נוכחי: {item.current_stock} | מינימום: {item.minimum_stock}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="secondary">
+                            {getStockStatusText(item.status)}
+                          </Badge>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
